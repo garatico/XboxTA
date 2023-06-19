@@ -1,0 +1,13 @@
+# Ignore local data and document files
+data/
+docs/
+
+# Ignore R config files
+.Rdata
+.Rhistory
+
+# Ignore Python config files
+.vscode/
+__pycache__/
+src/py/__pycache__/
+src/py/scrape/__pycache__/
