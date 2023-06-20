@@ -303,6 +303,11 @@ shinyApp(ui = ui, server = server)
 
 ```
 
+RQ1 : Hyperparameters
+Cross Folds = 5, 10, 25
+Max Depth = 3, 5, 8
+Nrounds = 50, 100, 1000
+
 ```{r RQ1 : Model Preparation}
 ts_profiles <- ts_profiles %>% keep(~ !is.null(.))
 
@@ -369,11 +374,12 @@ rm(dtrain)
 ```
 
 ```{r RQ1 : Cross Validation Create Folds}
+t1_5fold_full = get_cv_folds(t1_data_list, 5)
+t1_10fold_full = get_cv_folds(t1_data_list, 10)
 t1_25fold_full = get_cv_folds(t1_data_list, 25)
-t5_25fold_full = get_cv_folds(t5_data_list, 25)
 
 # Assuming you have an xgb.DMatrix called "dtrain"
-params <- list(
+t1_params <- list(
   objective = "reg:squarederror",
   eval_metric = "rmse",
   max_depth = 3,
@@ -381,55 +387,127 @@ params <- list(
   subsample = 0.8,
   colsample_bytree = 0.8
 )
-
 ```
 
 ```{r RQ1 : Model Train}
-t1_models <- lapply(1:189, function(index) train_cv_target_models(index, t1_25fold_full, params, t1_data_list, t1_dtrain_list))
+t1_5fold_models = lapply(1:189, function(index) train_cv_target_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 50))
+t1_10fold_models = lapply(1:189, function(index) train_cv_target_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 50))
+t1_25fold_models = lapply(1:189, function(index) train_cv_target_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 50))
 ```
 
-```{r RQ1 : Performance Metrics}
-# PROFILE 143
-cat("Mean RMSE:", t1_models[[143]][[4]], "\n")
-cat("Mean MAPE:", t1_models[[143]][[5]], "\n")
-cat("Mean SMAPE:", t1_models[[143]][[6]], "\n")
-
-# Create a data frame with the evaluation metrics for each fold
-t1_p143_metrics_df <- data.frame(
-  Fold = 1:length(t1_models[[143]][[3]][[1]]),
-  RMSE = t1_models[[143]][[3]][[1]],
-  MAPE = t1_models[[143]][[3]][[2]],
-  SMAPE = t1_models[[143]][[3]][[3]]
+```{r RQ1 : Performance Metrics Shiny}
+# UI
+ui <- fluidPage(
+  titlePanel("Evaluation Metrics"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("profile", "Select Profile:", choices = c(1:189))
+    ),
+    mainPanel(
+      plotOutput("t1_5fold_metrics_plot"),
+      plotOutput("t1_10fold_metrics_plot"),
+      plotOutput("t1_25fold_metrics_plot"),
+      tableOutput("mean_metrics")
+    )
+  )
 )
 
-t1_p97_metrics_df <- data.frame(
-  Fold = 1:length(t1_models[[97]][[3]][[1]]),
-  RMSE = t1_models[[97]][[3]][[1]],
-  MAPE = t1_models[[97]][[3]][[2]],
-  SMAPE = t1_models[[97]][[3]][[3]]
-)
+# Server
+server <- function(input, output, session) {
+  output$t1_5fold_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_5fold_metrics_df <- data.frame(
+      Fold = 1:length(t1_5fold_models[[profile]][[3]][[1]]),
+      RMSE = t1_5fold_models[[profile]][[3]][[1]],
+      MAPE = t1_5fold_models[[profile]][[3]][[2]],
+      SMAPE = t1_5fold_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_5fold_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_10fold_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_10fold_metrics_df <- data.frame(
+      Fold = 1:length(t1_10fold_models[[profile]][[3]][[1]]),
+      RMSE = t1_10fold_models[[profile]][[3]][[1]],
+      MAPE = t1_10fold_models[[profile]][[3]][[2]],
+      SMAPE = t1_10fold_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_10fold_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_25fold_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_25fold_metrics_df <- data.frame(
+      Fold = 1:length(t1_25fold_models[[profile]][[3]][[1]]),
+      RMSE = t1_25fold_models[[profile]][[3]][[1]],
+      MAPE = t1_25fold_models[[profile]][[3]][[2]],
+      SMAPE = t1_25fold_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_25fold_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$mean_metrics <- renderTable({
+    profile <- as.integer(input$profile)
+    
+    # Create a data frame with the mean metrics for the selected profile
+    mean_metrics_df <- data.frame(
+      Metric = c("Mean RMSE", "Mean RMSE", "Mean RMSE", "Mean MAPE", "Mean MAPE", "Mean MAPE", "Mean SMAPE", "Mean SMAPE", "Mean SMAPE"),
+      Value = c(
+        t1_5fold_models[[profile]][[4]],
+        t1_10fold_models[[profile]][[4]],
+        t1_25fold_models[[profile]][[4]],
+        t1_5fold_models[[profile]][[5]],
+        t1_10fold_models[[profile]][[5]],
+        t1_25fold_models[[profile]][[5]],
+        t1_5fold_models[[profile]][[6]],
+        t1_10fold_models[[profile]][[6]],
+        t1_25fold_models[[profile]][[6]]
+      ),
+      Fold = rep(c("5-fold", "10-fold", "25-fold"), each = 3)
+    )
+    
+    mean_metrics_df
+  })
+}
 
-# Reshape the data frame to long format for plotting
-t1_p97_metrics_long <- tidyr::pivot_longer(t1_p97_metrics_df, cols = -Fold, names_to = "Metric", values_to = "Value")
-t1_p143_metrics_long <- tidyr::pivot_longer(t1_p143_metrics_df, cols = -Fold, names_to = "Metric", values_to = "Value")
-
-# Plot the evaluation metrics
-ggplot(t1_p97_metrics_long, aes(x = Fold, y = Value, color = Metric)) +
-  geom_line() +
-  labs(title = "Evaluation Metrics Across Folds", y = "Metric Value", color = "Metric") +
-  theme_minimal()
-
-ggplot(t1_p143_metrics_long, aes(x = Fold, y = Value, color = Metric)) +
-  geom_line() +
-  labs(title = "Evaluation Metrics Across Folds", y = "Metric Value", color = "Metric") +
-  theme_minimal()
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
 
 ```
 
-
-
-```{r RQ2 : }
-
+```{r RQ2 : Churn Cross Validation Folds }
+t5_25fold_full = get_cv_folds(t5_data_list, 25)
 
 ```
 

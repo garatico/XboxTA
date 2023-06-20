@@ -39,7 +39,7 @@ get_cv_folds = function(target_data, fold_count) {
 
 
 
-train_cv_target_models = function(profile_index, target_cv_folds, params, data_list, dtrain_list) {
+train_cv_target_models = function(profile_index, target_cv_folds, params, data_list, dtrain_list, nrounds) {
   target_models = list()
   all_predictions = list()
   
@@ -60,7 +60,7 @@ train_cv_target_models = function(profile_index, target_cv_folds, params, data_l
     #print(paste0("FOLD: ", i, " Reached"))
     # Train the model on the training set
     
-    target_model <- xgb.train(params = params, data = train_set, nrounds = 50)
+    target_model <- xgb.train(params = params, data = train_set, nrounds = nrounds)
     
     # Store the trained model
     target_models[[i]] <- target_model
