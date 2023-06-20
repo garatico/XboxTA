@@ -39,8 +39,52 @@ get_cv_folds = function(target_data, fold_count) {
 
 
 
-train_cv_target_models = function() {
+train_cv_target_models = function(profile_index, target_cv_folds, params, data_list, dtrain_list) {
+  target_models = list()
+  all_predictions = list()
   
+  all_rmse <- numeric(length(target_cv_folds[[profile_index]]))
+  all_mape <- numeric(length(target_cv_folds[[profile_index]]))
+  all_smape <- numeric(length(target_cv_folds[[profile_index]]))
+  all_model_metrics <- list(all_rmse, all_mape, all_smape)
+  
+  for (i in 1:length(target_cv_folds[[profile_index]])) {
+    # Get the training set and corresponding test set for this fold
+    train_indices <- target_cv_folds[[profile_index]][[i]][["train"]]
+    test_indices <- target_cv_folds[[profile_index]][[i]][["test"]]
+    
+    # Subset the dtrain using the fold indices
+    train_set <- dtrain_list[[profile_index]][train_indices, ]
+    test_set <- dtrain_list[[profile_index]][test_indices, ]
+    
+    #print(paste0("FOLD: ", i, " Reached"))
+    # Train the model on the training set
+    
+    target_model <- xgb.train(params = params, data = train_set, nrounds = 50)
+    
+    # Store the trained model
+    target_models[[i]] <- target_model
+    
+    # Make predictions on the test set using the trained model
+    predictions <- predict(target_models[[i]], newdata = test_set)
+    
+    # Store the predictions for this fold
+    all_predictions[[i]] <- predictions
+    actual <- data_list[[profile_index]][test_indices, ]$target
+    
+    rmse <- sqrt(mean((actual - predictions)^2))
+    mape <- mean(abs((actual - predictions) / actual)) * 100
+    smape <- mean(2 * abs(actual - predictions) / (abs(actual) + abs(predictions))) * 100
+    
+    # Store the performance metrics for this fold
+    all_model_metrics[[1]][i] <- rmse
+    all_model_metrics[[2]][i] <- mape
+    all_model_metrics[[3]][i] <- smape
+  }
+  mean_rmse = mean(all_model_metrics[[1]])
+  mean_mape = mean(all_model_metrics[[2]])
+  mean_smape = mean(all_model_metrics[[3]])
+  return(list(target_models, all_predictions, all_model_metrics, mean_rmse, mean_mape, mean_smape))
 }
 
 

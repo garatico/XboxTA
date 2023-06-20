@@ -44,7 +44,7 @@ rnd_gamer_sample[[2]] = games_transform_hours(rnd_gamer_sample[[2]])
 ```
 
 ```{r Metrics Preprocessing (Total / Frequency)}
-print(paste("TOTAL OBSERVATIONS: ", get_total_observations(rnd_gamer_sample[[1]])))
+print(paste("TOTAL OBSERVATIONS:", get_total_observations(rnd_gamer_sample[[1]])))
 metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)
 
 frequency_dfs = achievement_calculate_frequencies(rnd_gamer_sample)
@@ -364,99 +364,62 @@ for (i in 1:length(ts_profiles)) {
   }
 }
 
+rm(data)
+rm(dtrain)
 ```
 
 ```{r RQ1 : Cross Validation Create Folds}
-data_t1_97 = t1_data_list[[97]]
-dtrain_t1_97 = t1_dtrain_list[[97]]
-
-data_t5_97 = t5_data_list[[97]]
-dtrain_t5_97 = t5_dtrain_list[[97]]
-
 t1_25fold_full = get_cv_folds(t1_data_list, 25)
 t5_25fold_full = get_cv_folds(t5_data_list, 25)
-
-```
-
-```{r RQ1 : Model Train}
-# Initialize empty lists to store predictions and performance metrics
-all_predictions <- list()
-all_rmse <- numeric(length(t1_25fold_full[[97]]))
-all_mape <- numeric(length(t1_25fold_full[[97]]))
-all_smape <- numeric(length(t1_25fold_full[[97]]))
 
 # Assuming you have an xgb.DMatrix called "dtrain"
 params <- list(
   objective = "reg:squarederror",
   eval_metric = "rmse",
-  max_depth = 5,
+  max_depth = 3,
   eta = 0.1,
   subsample = 0.8,
   colsample_bytree = 0.8
 )
-# Initialize an empty list to store the trained models
-t1_models <- list()
-
-# Iterate over the folds
-for (i in 1:length(t1_25fold_full[[97]])) {
-  # Get the training set and corresponding test set for this fold
-  train_indices <- t1_25fold_full[[97]][[i]][["train"]]
-  test_indices <- t1_25fold_full[[97]][[i]][["test"]]
-  
-  # Subset the dtrain using the fold indices
-  train_set <- dtrain[train_indices, ]
-  test_set <- dtrain[test_indices, ]
-  
-  # Train the model on the training set
-  model <- xgb.train(params = params, data = train_set, nrounds = 100)
-  
-  # Store the trained model
-  t1_models[[i]] <- model
-  
-  # Make predictions on the test set using the trained model
-  predictions <- predict(t1_models[[i]], newdata = test_set)
-  
-  # Store the predictions for this fold
-  all_predictions[[i]] <- predictions
-  
-  actual <- data[test_indices, ]$target
-  
-  rmse <- sqrt(mean((actual - predictions)^2))
-  mape <- mean(abs((actual - predictions) / actual)) * 100
-  smape <- mean(2 * abs(actual - predictions) / (abs(actual) + abs(predictions))) * 100
-  
-  # Store the performance metrics for this fold
-  all_rmse[i] <- rmse
-  all_mape[i] <- mape
-  all_smape[i] <- smape
-}
-
-# Aggregate the performance metrics (e.g., mean RMSE and MAPE)
-mean_rmse <- mean(all_rmse)
-mean_mape <- mean(all_mape)
-mean_smape = mean(all_smape)
-
-# Print the performance metrics
-cat("Mean RMSE:", mean_rmse, "\n")
-cat("Mean MAPE:", mean_mape, "\n")
-cat("Mean SMAPE:", mean_smape, "\n")
 
 ```
 
-```{r RQ1 : Plot Validation}
+```{r RQ1 : Model Train}
+t1_models <- lapply(1:189, function(index) train_cv_target_models(index, t1_25fold_full, params, t1_data_list, t1_dtrain_list))
+```
+
+```{r RQ1 : Performance Metrics}
+# PROFILE 143
+cat("Mean RMSE:", t1_models[[143]][[4]], "\n")
+cat("Mean MAPE:", t1_models[[143]][[5]], "\n")
+cat("Mean SMAPE:", t1_models[[143]][[6]], "\n")
+
 # Create a data frame with the evaluation metrics for each fold
-metrics_df <- data.frame(
-  Fold = 1:length(all_rmse),
-  RMSE = all_rmse,
-  MAPE = all_mape,
-  SMAPE = all_smape
+t1_p143_metrics_df <- data.frame(
+  Fold = 1:length(t1_models[[143]][[3]][[1]]),
+  RMSE = t1_models[[143]][[3]][[1]],
+  MAPE = t1_models[[143]][[3]][[2]],
+  SMAPE = t1_models[[143]][[3]][[3]]
+)
+
+t1_p97_metrics_df <- data.frame(
+  Fold = 1:length(t1_models[[97]][[3]][[1]]),
+  RMSE = t1_models[[97]][[3]][[1]],
+  MAPE = t1_models[[97]][[3]][[2]],
+  SMAPE = t1_models[[97]][[3]][[3]]
 )
 
 # Reshape the data frame to long format for plotting
-metrics_long <- tidyr::pivot_longer(metrics_df, cols = -Fold, names_to = "Metric", values_to = "Value")
+t1_p97_metrics_long <- tidyr::pivot_longer(t1_p97_metrics_df, cols = -Fold, names_to = "Metric", values_to = "Value")
+t1_p143_metrics_long <- tidyr::pivot_longer(t1_p143_metrics_df, cols = -Fold, names_to = "Metric", values_to = "Value")
 
 # Plot the evaluation metrics
-ggplot(metrics_long, aes(x = Fold, y = Value, color = Metric)) +
+ggplot(t1_p97_metrics_long, aes(x = Fold, y = Value, color = Metric)) +
+  geom_line() +
+  labs(title = "Evaluation Metrics Across Folds", y = "Metric Value", color = "Metric") +
+  theme_minimal()
+
+ggplot(t1_p143_metrics_long, aes(x = Fold, y = Value, color = Metric)) +
   geom_line() +
   labs(title = "Evaluation Metrics Across Folds", y = "Metric Value", color = "Metric") +
   theme_minimal()
