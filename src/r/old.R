@@ -73,3 +73,220 @@ cat("MAE:", mae, "\n")
 cat("R-squared:", r_squared, "\n")
 
 ```
+```{r Model 2 : Churn Train/Test Split}
+# Sort the data frame by date in ascending order
+split_da_profiles <- lapply(da_profiles, function(df) {
+  sorted_df <- df[order(df$date), ]
+  sorted_df$weekday <- as.numeric(factor(sorted_df$weekday)) - 1
+  sorted_df$churn_status <- as.numeric(factor(sorted_df$churn_status)) - 1
+  
+  split_index <- ceiling(0.7 * nrow(sorted_df))
+  
+  train_df <- sorted_df[1:split_index, ]
+  test_df <- sorted_df[(split_index + 1):nrow(sorted_df), ]
+  
+  return(list(train_df = train_df, test_df = test_df))
+})
+
+
+```
+
+```{r Model 2 : Churn Train}
+# OBJ = binary:logitraw, binary:hinge, binary:logitboost, binary:logloss
+
+# Train individual models for each profile
+profile_binary_models <- list()
+profile_regression_models = list()
+
+for (i in 1:length(split_da_profiles)) {
+  profile <- split_da_profiles[[i]]
+  
+  # Extract the train and test data for the current profile
+  train_df <- profile$train
+  test_df <- profile$test
+  
+  # Define the features and target variable
+  model_binary_features <- c("year", "month.x", "day_of_year", "week", "weekday", "days_since_achievement", "n")
+  model_binary_target <- "churn_status"
+  
+  model_regression_features <- c("year", "month.x", "day_of_year", "week", "weekday", "n")
+  model_regression_target <- "days_since_achievement"
+  
+  # Convert the train data to a matrix
+  train_binary_matrix <- as.matrix(train_df[, model_binary_features])
+  train_regression_matrix <- as.matrix(train_df[, model_regression_features])
+  
+  test_binary_matrix <- as.matrix(test_df[, model_binary_features])
+  test_regression_matrix <- as.matrix(test_df[, model_regression_features])
+  
+  # Create the DMatrix for training
+  dtrain_binary <- xgb.DMatrix(data = train_binary_matrix, label = train_df[[model_binary_target]])
+  dtrain_regression <- xgb.DMatrix(data = train_regression_matrix, label = train_df[[model_regression_target]])
+  
+  dtest_binary <- xgb.DMatrix(data = test_binary_matrix, label = test_df[[model_binary_target]])
+  dtest_regression <- xgb.DMatrix(data = test_regression_matrix, label = test_df[[model_regression_target]])
+  
+  # Set the hyperparameters for the XGBoost model
+  binary_params <- list(
+    objective = "binary:logistic",  # Binary classification task
+    max_depth = 6,  # Maximum tree depth
+    eta = 0.1,  # Learning rate
+    subsample = 0.8,  # Subsample ratio
+    colsample_bytree = 0.8  # Feature subsampling ratio
+  )
+  
+  regression_params = list(
+    objective = "reg:squarederror",  # Regression task
+    max_depth = 6,  # Maximum tree depth
+    eta = 0.1,  # Learning rate
+    subsample = 0.8,  # Subsample ratio
+    colsample_bytree = 0.8  # Feature subsampling ratio
+  )
+  
+  # Train the XGBoost model
+  binary_model <- xgb.train(params = binary_params, data = dtrain_binary, nrounds = 100)
+  regression_model <- xgb.train(params = regression_params, data = dtrain_regression, nrounds = 100)
+  
+  # Store the trained models
+  profile_binary_models[[i]] = binary_model
+  profile_regression_models[[i]] = regression_model
+}
+
+
+```
+
+```{r Model 2 : Churn Predictions}
+# Initialize lists to store predictions and actual values
+all_binary_predictions <- list()
+all_regression_predictions <- list()
+
+all_binary_actuals <- list()
+all_regression_actuals = list()
+
+# Iterate over the models and make predictions
+for (i in 1:length(profile_binary_models)) {
+  # Get the current binary classification and regression models, and test data for the profile
+  binary_model <- profile_binary_models[[i]]
+  regression_model <- profile_regression_models[[i]]
+  test_df <- split_da_profiles[[i]]$test
+  
+  # Define the binary classification features and target variable
+  binary_features <- c("year", "month.x", "day_of_year", "week", "weekday", "days_since_achievement", "n")
+  binary_target <- "churn_status"
+  
+  # Define the regression features and target variable
+  regression_features <- c("year", "month.x", "day_of_year", "week", "weekday", "n")
+  regression_target <- "days_since_achievement"
+  
+  # Convert the test data to matrices
+  binary_matrix <- as.matrix(test_df[, binary_features])
+  regression_matrix <- as.matrix(test_df[, regression_features])
+  
+  # Create the DMatrix for prediction
+  dbinary <- xgb.DMatrix(data = binary_matrix)
+  dregression <- xgb.DMatrix(data = regression_matrix)
+  
+  # Make predictions using the models
+  binary_predictions <- predict(binary_model, dbinary)
+  regression_predictions <- predict(regression_model, dregression)
+  
+  # Store the predictions and actual values
+  all_binary_predictions[[i]] <- binary_predictions
+  all_regression_predictions[[i]] <- regression_predictions
+  
+  all_binary_actuals[[i]] <- test_df[[binary_target]]
+  all_regression_actuals[[i]] <- test_df[[regression_target]]
+}
+
+# Apply threshold to convert binary probabilities to class labels
+all_binary_predicted_labels <- lapply(all_binary_predictions, function(pred) ifelse(pred > 0.5, 1, 0))
+
+
+```
+
+```{r Model 2 : Churn Evaluate}
+
+confusion_matrices <- lapply(1:length(all_binary_predicted_labels), function(i) {
+  predicted <- factor(all_binary_predicted_labels[[i]], levels = c(0, 1), labels = c("Active", "Churned"))
+  actual <- factor(all_actuals[[i]], levels = c(0, 1), labels = c("Active", "Churned"))
+  confusionMatrix(predicted, actual)
+})
+
+evaluation_metrics <- lapply(confusion_matrices, function(cm) {
+  cm_summary <- cm$byClass
+  return(cm_summary)
+})
+
+# Initialize lists to store evaluation metrics
+regression_eval_metrics <- list()
+
+# Iterate over the regression predictions and actual values
+for (i in 1:length(all_regression_predictions)) {
+  # Get the current regression predictions and actual values
+  predictions <- all_regression_predictions[[i]]
+  actuals <- all_regression_actuals[[i]]
+  
+  # Calculate evaluation metrics
+  mae <- mean(abs(predictions - actuals))
+  rmse <- sqrt(mean((predictions - actuals)^2))
+  
+  # Store the evaluation metrics
+  regression_eval_metrics[[i]] <- list(MAE = mae, RMSE = rmse, R_squared = r_squared)
+}
+
+# Print the evaluation metrics
+for (i in 1:length(regression_eval_metrics)) {
+  cat("Profile", i, "Evaluation Metrics:\n")
+  cat("MAE:", regression_eval_metrics[[i]]$MAE, "\n")
+  cat("RMSE:", regression_eval_metrics[[i]]$RMSE, "\n")
+}
+
+
+```
+
+
+```{r Model 2 : Forecast}
+for (i in 1:length(split_da_profiles)) {
+  profile <- split_da_profiles[[i]]
+  
+  # Extract the train and test data for the current profile
+  train_df <- profile$train
+  test_df <- profile$test
+  
+  # Create time series objects for the train and test data
+  train_ts <- ts(train_df$churn_status)
+  test_ts <- ts(test_df$churn_status)
+  
+  # Build the forecasting model
+  model <- auto.arima(train_ts)
+  
+  # Make predictions
+  forecast <- forecast(model, h = length(test_ts))
+  
+  # Print the forecasted values
+  print(forecast)
+}
+
+```
+
+```{r RQ2 : Churn Ratios}
+total_observations <- 0
+
+for (profile in da_profiles) {
+  total_observations <- total_observations + nrow(profile)
+}
+
+print(paste("Total observations across all profiles:", total_observations))
+
+total_observations <- 0
+
+for (profile in da_profiles) {
+  if ("Active" %in% profile$churn_status && "Churned" %in% profile$churn_status) {
+    print(table(profile$churn_status))
+    total_observations <- total_observations + nrow(profile)
+  }
+}
+
+print(paste("Total observations:", total_observations))
+
+```

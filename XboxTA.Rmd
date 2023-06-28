@@ -2,8 +2,14 @@
 title: "XboxTA"
 author: "Giovanni Aratico"
 date: "2023-05-25"
-output: html_document
+output: github_document
 ---
+
+# GOAL:
+- Analyze time series of achievement histories of a sample of profiles. 
+- Can we forecast user engagement?
+- Can we predict customer churn?
+
 ```{r Setup, include=FALSE} 
 set.seed(196)
 library(tidyverse)
@@ -23,12 +29,15 @@ source("./src/r/variables/variables.R")
 source("./src/r/models/models.R")
 ```
 
-Gets file directories of all CSVs to pull for analysis.
+# Read Files and Create Manifests
+
+Gets file directories of all CSVs to pull for analysis. Load the full leaderboard of TA for exploratory data analysis. Read the full achievements manifest for later analysis. We take a sample of 200 profiles and order them. 
+
 ```{r File Directories / Manifest}
 set.seed(196)
 directory_df = create_file_directory()
-#lb_df = read.csv("./data/leaderboard/leaderboard.csv")
-#achievements_manifest = read.csv("./data/manifest/achievements_manifest.csv")
+lb_df = read.csv("./data/leaderboard/leaderboard.csv")
+achievements_manifest = read.csv("./data/manifest/achievements_manifest.csv")
 
 # Sample and sort gamers
 rnd_gamer_sample = sample_random_gamers(200, directory_df = directory_df)
@@ -36,6 +45,16 @@ rnd_gamer_sample = lapply(rnd_gamer_sample, function(x) x[order(rnd_gamer_sample
 
 rm(create_file_directory)
 ```
+
+# Achievement Transformations
+- Removes character entries for achievement earned. 
+- Formats date and adds formatted columns for month, day of year and isoweek. 
+- Creates column for tracking weekend / weekday
+
+# Game Transformations
+- Removes entries with unattainable values. 
+- Extracts hours and minutes and splits columns
+- Splits app hours from game hours
 
 ```{r Feature Transformations}
 #lb_df = lb_feature_transformations(lb_df)
@@ -50,6 +69,8 @@ metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)
 frequency_dfs = achievement_calculate_frequencies(rnd_gamer_sample)
 frequency_combined_df = bind_rows(frequency_dfs, .id = "data_frame_id")
 frequency_combined_df$data_frame_id = as.numeric(frequency_combined_df$data_frame_id)
+
+rm(directory_df)
 ```
 
 ```{r Metrics Preprocessing (Daily Achievements)}
@@ -62,6 +83,9 @@ da_profiles = da_profiles_set_days_existence(da_profiles)
 da_profiles = calculate_daily_lt_eir(da_profiles)
 da_profiles = calculate_weekly_eir_all2(da_profiles)
 da_profiles = calculate_monthly_eir_all2(da_profiles)
+
+rm(frequency_dfs)
+rm(frequency_combined_df)
 ```
 
 ```{r EDA Leaderboard}
@@ -305,8 +329,7 @@ shinyApp(ui = ui, server = server)
 
 RQ1 : Hyperparameters
 Cross Folds = 5, 10, 25
-Max Depth = 3, 5, 8
-Nrounds = 50, 100, 1000
+Nrounds = 100, 1000
 
 ```{r RQ1 : Model Preparation}
 ts_profiles <- ts_profiles %>% keep(~ !is.null(.))
@@ -382,20 +405,29 @@ t1_25fold_full = get_cv_folds(t1_data_list, 25)
 t1_params <- list(
   objective = "reg:squarederror",
   eval_metric = "rmse",
-  max_depth = 3,
+  max_depth = 8,
   eta = 0.1,
   subsample = 0.8,
   colsample_bytree = 0.8
 )
 ```
 
-```{r RQ1 : Model Train}
-t1_5fold_models = lapply(1:189, function(index) train_cv_target_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 50))
-t1_10fold_models = lapply(1:189, function(index) train_cv_target_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 50))
-t1_25fold_models = lapply(1:189, function(index) train_cv_target_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 50))
+```{r RQ1 : Model Train 100n}
+# 100 BOOST ROUNDS
+t1_5fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
+t1_10fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
+t1_25fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
 ```
 
-```{r RQ1 : Performance Metrics Shiny}
+```{r RQ1 : Model Train 1000n}
+# 1000 BOOST ROUNDS
+#t1_5fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
+#t1_10fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
+#t1_25fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
+
+```
+
+```{r RQ1 : Performance Metrics Shiny 100n}
 # UI
 ui <- fluidPage(
   titlePanel("Evaluation Metrics"),
@@ -404,9 +436,9 @@ ui <- fluidPage(
       selectInput("profile", "Select Profile:", choices = c(1:189))
     ),
     mainPanel(
-      plotOutput("t1_5fold_metrics_plot"),
-      plotOutput("t1_10fold_metrics_plot"),
-      plotOutput("t1_25fold_metrics_plot"),
+      plotOutput("t1_5fold_100n_metrics_plot"),
+      plotOutput("t1_10fold_100n_metrics_plot"),
+      plotOutput("t1_25fold_100n_metrics_plot"),
       tableOutput("mean_metrics")
     )
   )
@@ -414,17 +446,129 @@ ui <- fluidPage(
 
 # Server
 server <- function(input, output, session) {
-  output$t1_5fold_metrics_plot <- renderPlot({
+  output$t1_5fold_100n_metrics_plot <- renderPlot({
     profile <- as.integer(input$profile)
     # Create a data frame with the evaluation metrics for the selected profile
-    t1_5fold_metrics_df <- data.frame(
-      Fold = 1:length(t1_5fold_models[[profile]][[3]][[1]]),
-      RMSE = t1_5fold_models[[profile]][[3]][[1]],
-      MAPE = t1_5fold_models[[profile]][[3]][[2]],
-      SMAPE = t1_5fold_models[[profile]][[3]][[3]]
+    t1_5fold_100n_metrics_df <- data.frame(
+      Fold = 1:length(t1_5fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = t1_5fold_100n_models[[profile]][[3]][[1]],
+      MAPE = t1_5fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = t1_5fold_100n_models[[profile]][[3]][[3]]
     )
     # Plot the evaluation metrics
-    ggplot(t1_5fold_metrics_df, aes(x = Fold)) +
+    ggplot(t1_5fold_100n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics (5 Fold) - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_10fold_100n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_10fold_100n_metrics_df <- data.frame(
+      Fold = 1:length(t1_10fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = t1_10fold_100n_models[[profile]][[3]][[1]],
+      MAPE = t1_10fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = t1_10fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_10fold_100n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics (10 Fold) - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_25fold_100n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_25fold_100n_metrics_df <- data.frame(
+      Fold = 1:length(t1_25fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = t1_25fold_100n_models[[profile]][[3]][[1]],
+      MAPE = t1_25fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = t1_25fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_25fold_100n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics (25 Fold) - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$mean_metrics <- renderTable({
+  profile <- as.integer(input$profile)
+  
+  # Create a data frame with the mean metrics for the selected profile
+  mean_metrics_df <- data.frame(
+    Metric = rep(c("Mean RMSE", "Mean MAPE", "Mean SMAPE"), times = 3),
+    Value = c(
+      t1_5fold_100n_models[[profile]][[4]],
+      t1_5fold_100n_models[[profile]][[5]],
+      t1_5fold_100n_models[[profile]][[6]],
+      t1_10fold_100n_models[[profile]][[4]],
+      t1_10fold_100n_models[[profile]][[5]],
+      t1_10fold_100n_models[[profile]][[6]],
+      t1_25fold_100n_models[[profile]][[4]],
+      t1_25fold_100n_models[[profile]][[5]],
+      t1_25fold_100n_models[[profile]][[6]]
+    ),
+    Fold = rep(c("5-fold", "10-fold", "25-fold"), each = 3)
+  )
+  
+  mean_metrics_df
+})
+
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+
+```
+
+```{r RQ1 : Performance Metrics Shiny 1000n}
+# UI
+ui <- fluidPage(
+  titlePanel("Evaluation Metrics"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("profile", "Select Profile:", choices = c(1:189))
+    ),
+    mainPanel(
+      plotOutput("t1_5fold_1000n_metrics_plot"),
+      plotOutput("t1_10fold_1000n_metrics_plot"),
+      plotOutput("t1_25fold_1000n_metrics_plot"),
+      tableOutput("mean_metrics")
+    )
+  )
+)
+
+# Server
+server <- function(input, output, session) {
+  output$t1_5fold_1000n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_5fold_1000n_metrics_df <- data.frame(
+      Fold = 1:length(t1_5fold_1000n_models[[profile]][[3]][[1]]),
+      RMSE = t1_5fold_1000n_models[[profile]][[3]][[1]],
+      MAPE = t1_5fold_1000n_models[[profile]][[3]][[2]],
+      SMAPE = t1_5fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_5fold_1000n_metrics_df, aes(x = Fold)) +
       geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
       geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
       geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
@@ -435,17 +579,17 @@ server <- function(input, output, session) {
       scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
       theme_minimal()
   })
-  output$t1_10fold_metrics_plot <- renderPlot({
+  output$t1_10fold_1000n_metrics_plot <- renderPlot({
     profile <- as.integer(input$profile)
     # Create a data frame with the evaluation metrics for the selected profile
-    t1_10fold_metrics_df <- data.frame(
-      Fold = 1:length(t1_10fold_models[[profile]][[3]][[1]]),
-      RMSE = t1_10fold_models[[profile]][[3]][[1]],
-      MAPE = t1_10fold_models[[profile]][[3]][[2]],
-      SMAPE = t1_10fold_models[[profile]][[3]][[3]]
+    t1_10fold_1000n_metrics_df <- data.frame(
+      Fold = 1:length(t1_10fold_1000n_models[[profile]][[3]][[1]]),
+      RMSE = t1_10fold_1000n_models[[profile]][[3]][[1]],
+      MAPE = t1_10fold_1000n_models[[profile]][[3]][[2]],
+      SMAPE = t1_10fold_1000n_models[[profile]][[3]][[3]]
     )
     # Plot the evaluation metrics
-    ggplot(t1_10fold_metrics_df, aes(x = Fold)) +
+    ggplot(t1_10fold_1000n_metrics_df, aes(x = Fold)) +
       geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
       geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
       geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
@@ -456,17 +600,17 @@ server <- function(input, output, session) {
       scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
       theme_minimal()
   })
-  output$t1_25fold_metrics_plot <- renderPlot({
+  output$t1_25fold_1000n_metrics_plot <- renderPlot({
     profile <- as.integer(input$profile)
     # Create a data frame with the evaluation metrics for the selected profile
-    t1_25fold_metrics_df <- data.frame(
-      Fold = 1:length(t1_25fold_models[[profile]][[3]][[1]]),
-      RMSE = t1_25fold_models[[profile]][[3]][[1]],
-      MAPE = t1_25fold_models[[profile]][[3]][[2]],
-      SMAPE = t1_25fold_models[[profile]][[3]][[3]]
+    t1_25fold_1000n_metrics_df <- data.frame(
+      Fold = 1:length(t1_25fold_1000n_models[[profile]][[3]][[1]]),
+      RMSE = t1_25fold_1000n_models[[profile]][[3]][[1]],
+      MAPE = t1_25fold_1000n_models[[profile]][[3]][[2]],
+      SMAPE = t1_25fold_1000n_models[[profile]][[3]][[3]]
     )
     # Plot the evaluation metrics
-    ggplot(t1_25fold_metrics_df, aes(x = Fold)) +
+    ggplot(t1_25fold_1000n_metrics_df, aes(x = Fold)) +
       geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
       geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
       geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
@@ -484,15 +628,15 @@ server <- function(input, output, session) {
     mean_metrics_df <- data.frame(
       Metric = c("Mean RMSE", "Mean RMSE", "Mean RMSE", "Mean MAPE", "Mean MAPE", "Mean MAPE", "Mean SMAPE", "Mean SMAPE", "Mean SMAPE"),
       Value = c(
-        t1_5fold_models[[profile]][[4]],
-        t1_10fold_models[[profile]][[4]],
-        t1_25fold_models[[profile]][[4]],
-        t1_5fold_models[[profile]][[5]],
-        t1_10fold_models[[profile]][[5]],
-        t1_25fold_models[[profile]][[5]],
-        t1_5fold_models[[profile]][[6]],
-        t1_10fold_models[[profile]][[6]],
-        t1_25fold_models[[profile]][[6]]
+        t1_5fold_1000n_models[[profile]][[4]],
+        t1_10fold_1000n_models[[profile]][[4]],
+        t1_25fold_1000n_models[[profile]][[4]],
+        t1_5fold_1000n_models[[profile]][[5]],
+        t1_10fold_1000n_models[[profile]][[5]],
+        t1_25fold_1000n_models[[profile]][[5]],
+        t1_5fold_1000n_models[[profile]][[6]],
+        t1_10fold_1000n_models[[profile]][[6]],
+        t1_25fold_1000n_models[[profile]][[6]]
       ),
       Fold = rep(c("5-fold", "10-fold", "25-fold"), each = 3)
     )
@@ -506,210 +650,96 @@ shinyApp(ui = ui, server = server)
 
 ```
 
-```{r RQ2 : Churn Cross Validation Folds }
+```{r RQ2 : Churn Cross Validation Folds}
+t5_5fold_full = get_cv_folds(t5_data_list, 5)
+t5_10fold_full = get_cv_folds(t5_data_list, 10)
 t5_25fold_full = get_cv_folds(t5_data_list, 25)
 
+t5_params <- list(
+  objective = "binary:logistic",  # Set the objective to binary:logistic
+  eval_metric = "logloss",        # Use logloss as the evaluation metric
+  max_depth = 8,
+  eta = 0.1,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
 ```
 
-```{r Model 2 : Churn Train/Test Split}
-# Sort the data frame by date in ascending order
-split_da_profiles <- lapply(da_profiles, function(df) {
-  sorted_df <- df[order(df$date), ]
-  sorted_df$weekday <- as.numeric(factor(sorted_df$weekday)) - 1
-  sorted_df$churn_status <- as.numeric(factor(sorted_df$churn_status)) - 1
-  
-  split_index <- ceiling(0.7 * nrow(sorted_df))
-  
-  train_df <- sorted_df[1:split_index, ]
-  test_df <- sorted_df[(split_index + 1):nrow(sorted_df), ]
-  
-  return(list(train_df = train_df, test_df = test_df))
-})
+```{r RQ2 : Churn Train 100n}
+t5_25fold_100n_models = lapply(1:189, function(index) train_cv_target5_models(index, t5_25fold_full, t5_params, t5_data_list, t5_dtrain_list, 100))
+```
 
+```{r RQ2 : Churn Metrics Summed}
+# Create a data frame with the summed metrics
+summed_metrics_df <- data.frame(
+  Profile_Index = 1:189,
+  Summed_Accuracy = summed_accuracy,
+  Summed_Precision = summed_precision,
+  Summed_Recall = summed_recall,
+  Summed_F1_Score = summed_f1_score
+)
+
+# Function to plot a single metric
+plot_summed_metric <- function(metric_name) {
+  metric_plot <- ggplot(summed_metrics_df, aes(x = reorder(Profile_Index, .data[[metric_name]]), y = .data[[metric_name]])) +
+    geom_bar(stat = "identity", fill = "skyblue") +
+    labs(x = "Profile Index", y = metric_name) +
+    ggtitle(paste("Summed", metric_name)) +
+    theme_minimal()
+  
+  print(metric_plot)
+}
+
+# Plot each metric separately
+plot_summed_metric("Summed_Accuracy")
+plot_summed_metric("Summed_Precision")
+plot_summed_metric("Summed_Recall")
+plot_summed_metric("Summed_F1_Score")
 
 ```
 
-```{r Model 2 : Churn Train}
-# OBJ = binary:logitraw, binary:hinge, binary:logitboost, binary:logloss
-
-# Train individual models for each profile
-profile_binary_models <- list()
-profile_regression_models = list()
-
-for (i in 1:length(split_da_profiles)) {
-  profile <- split_da_profiles[[i]]
-  
-  # Extract the train and test data for the current profile
-  train_df <- profile$train
-  test_df <- profile$test
-  
-  # Define the features and target variable
-  model_binary_features <- c("year", "month.x", "day_of_year", "week", "weekday", "days_since_achievement", "n")
-  model_binary_target <- "churn_status"
-  
-  model_regression_features <- c("year", "month.x", "day_of_year", "week", "weekday", "n")
-  model_regression_target <- "days_since_achievement"
-  
-  # Convert the train data to a matrix
-  train_binary_matrix <- as.matrix(train_df[, model_binary_features])
-  train_regression_matrix <- as.matrix(train_df[, model_regression_features])
-  
-  test_binary_matrix <- as.matrix(test_df[, model_binary_features])
-  test_regression_matrix <- as.matrix(test_df[, model_regression_features])
-  
-  # Create the DMatrix for training
-  dtrain_binary <- xgb.DMatrix(data = train_binary_matrix, label = train_df[[model_binary_target]])
-  dtrain_regression <- xgb.DMatrix(data = train_regression_matrix, label = train_df[[model_regression_target]])
-  
-  dtest_binary <- xgb.DMatrix(data = test_binary_matrix, label = test_df[[model_binary_target]])
-  dtest_regression <- xgb.DMatrix(data = test_regression_matrix, label = test_df[[model_regression_target]])
-  
-  # Set the hyperparameters for the XGBoost model
-  binary_params <- list(
-    objective = "binary:logistic",  # Binary classification task
-    max_depth = 6,  # Maximum tree depth
-    eta = 0.1,  # Learning rate
-    subsample = 0.8,  # Subsample ratio
-    colsample_bytree = 0.8  # Feature subsampling ratio
+```{r RQ2 : Churn Performance Metrics Shiny 100n}
+# UI
+ui <- fluidPage(
+  titlePanel("Evaluation Metrics"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("profile", "Select Profile:", choices = c(1:189))
+    ),
+    mainPanel(
+      plotOutput("t5_25fold_100n_metrics_plot"),
+      tableOutput("mean_metrics")
+    )
   )
-  
-  regression_params = list(
-    objective = "reg:squarederror",  # Regression task
-    max_depth = 6,  # Maximum tree depth
-    eta = 0.1,  # Learning rate
-    subsample = 0.8,  # Subsample ratio
-    colsample_bytree = 0.8  # Feature subsampling ratio
-  )
-  
-  # Train the XGBoost model
-  binary_model <- xgb.train(params = binary_params, data = dtrain_binary, nrounds = 100)
-  regression_model <- xgb.train(params = regression_params, data = dtrain_regression, nrounds = 100)
-  
-  # Store the trained models
-  profile_binary_models[[i]] = binary_model
-  profile_regression_models[[i]] = regression_model
+)
+
+# Server
+server <- function(input, output, session) {
+  output$t5_25fold_100n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t5_25fold_100n_metrics_df <- data.frame(
+      Fold = 1:length(t5_25fold_100n_models[[profile]][[3]][[1]]),
+      Accuracy = t5_25fold_100n_models[[profile]][[3]][[1]],
+      Precision = t5_25fold_100n_models[[profile]][[3]][[2]],
+      Recall = t5_25fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t5_25fold_100n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = Accuracy, color = "Accuracy"), size = 1) +
+      geom_line(aes(y = Precision, color = "Precision"), size = 1) +
+      geom_line(aes(y = Recall, color = "Recall"), size = 1) +
+      labs(title = paste("Evaluation Metrics - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("Accuracy" = "red", "Precision" = "blue", "Recall" = "green")) +
+      theme_minimal()
+  })
 }
 
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
 
 ```
-
-```{r Model 2 : Churn Predictions}
-# Initialize lists to store predictions and actual values
-all_binary_predictions <- list()
-all_regression_predictions <- list()
-
-all_binary_actuals <- list()
-all_regression_actuals = list()
-
-# Iterate over the models and make predictions
-for (i in 1:length(profile_binary_models)) {
-  # Get the current binary classification and regression models, and test data for the profile
-  binary_model <- profile_binary_models[[i]]
-  regression_model <- profile_regression_models[[i]]
-  test_df <- split_da_profiles[[i]]$test
-  
-  # Define the binary classification features and target variable
-  binary_features <- c("year", "month.x", "day_of_year", "week", "weekday", "days_since_achievement", "n")
-  binary_target <- "churn_status"
-  
-  # Define the regression features and target variable
-  regression_features <- c("year", "month.x", "day_of_year", "week", "weekday", "n")
-  regression_target <- "days_since_achievement"
-  
-  # Convert the test data to matrices
-  binary_matrix <- as.matrix(test_df[, binary_features])
-  regression_matrix <- as.matrix(test_df[, regression_features])
-  
-  # Create the DMatrix for prediction
-  dbinary <- xgb.DMatrix(data = binary_matrix)
-  dregression <- xgb.DMatrix(data = regression_matrix)
-  
-  # Make predictions using the models
-  binary_predictions <- predict(binary_model, dbinary)
-  regression_predictions <- predict(regression_model, dregression)
-  
-  # Store the predictions and actual values
-  all_binary_predictions[[i]] <- binary_predictions
-  all_regression_predictions[[i]] <- regression_predictions
-  
-  all_binary_actuals[[i]] <- test_df[[binary_target]]
-  all_regression_actuals[[i]] <- test_df[[regression_target]]
-}
-
-# Apply threshold to convert binary probabilities to class labels
-all_binary_predicted_labels <- lapply(all_binary_predictions, function(pred) ifelse(pred > 0.5, 1, 0))
-
-
-```
-
-```{r Model 2 : Churn Evaluate}
-
-confusion_matrices <- lapply(1:length(all_binary_predicted_labels), function(i) {
-  predicted <- factor(all_binary_predicted_labels[[i]], levels = c(0, 1), labels = c("Active", "Churned"))
-  actual <- factor(all_actuals[[i]], levels = c(0, 1), labels = c("Active", "Churned"))
-  confusionMatrix(predicted, actual)
-})
-
-evaluation_metrics <- lapply(confusion_matrices, function(cm) {
-  cm_summary <- cm$byClass
-  return(cm_summary)
-})
-
-# Initialize lists to store evaluation metrics
-regression_eval_metrics <- list()
-
-# Iterate over the regression predictions and actual values
-for (i in 1:length(all_regression_predictions)) {
-  # Get the current regression predictions and actual values
-  predictions <- all_regression_predictions[[i]]
-  actuals <- all_regression_actuals[[i]]
-  
-  # Calculate evaluation metrics
-  mae <- mean(abs(predictions - actuals))
-  rmse <- sqrt(mean((predictions - actuals)^2))
-  
-  # Store the evaluation metrics
-  regression_eval_metrics[[i]] <- list(MAE = mae, RMSE = rmse, R_squared = r_squared)
-}
-
-# Print the evaluation metrics
-for (i in 1:length(regression_eval_metrics)) {
-  cat("Profile", i, "Evaluation Metrics:\n")
-  cat("MAE:", regression_eval_metrics[[i]]$MAE, "\n")
-  cat("RMSE:", regression_eval_metrics[[i]]$RMSE, "\n")
-}
-
-
-```
-
-
-```{r Model 2 : Forecast}
-for (i in 1:length(split_da_profiles)) {
-  profile <- split_da_profiles[[i]]
-  
-  # Extract the train and test data for the current profile
-  train_df <- profile$train
-  test_df <- profile$test
-  
-  # Create time series objects for the train and test data
-  train_ts <- ts(train_df$churn_status)
-  test_ts <- ts(test_df$churn_status)
-  
-  # Build the forecasting model
-  model <- auto.arima(train_ts)
-  
-  # Make predictions
-  forecast <- forecast(model, h = length(test_ts))
-  
-  # Print the forecasted values
-  print(forecast)
-}
-
-```
-
-
-
-
-
-
 

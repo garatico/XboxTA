@@ -38,8 +38,8 @@ get_cv_folds = function(target_data, fold_count) {
 }
 
 
-
-train_cv_target_models = function(profile_index, target_cv_folds, params, data_list, dtrain_list, nrounds) {
+# TARGET 1
+train_cv_target1_models = function(profile_index, target_cv_folds, params, data_list, dtrain_list, nrounds) {
   target_models = list()
   all_predictions = list()
   
@@ -84,7 +84,90 @@ train_cv_target_models = function(profile_index, target_cv_folds, params, data_l
   mean_rmse = mean(all_model_metrics[[1]])
   mean_mape = mean(all_model_metrics[[2]])
   mean_smape = mean(all_model_metrics[[3]])
+  print(paste0("PROFILE: ", profile_index, " Complete"))
   return(list(target_models, all_predictions, all_model_metrics, mean_rmse, mean_mape, mean_smape))
 }
 
-
+# TARGET 5
+train_cv_target5_models <- function(profile_index, target_cv_folds, params, data_list, dtrain_list, nrounds) {
+  target_models <- list()
+  all_predictions <- list()
+  all_confusion_matrices <- list()
+  summed_confusion_matrix <- matrix(0, nrow = 2, ncol = 2)  # Initialize summed confusion matrix
+  
+  # Initialize variables for performance metrics
+  all_accuracy <- c()
+  all_precision <- c()
+  all_recall <- c()
+  all_f1_score <- c()
+  
+  for (i in 1:length(target_cv_folds[[profile_index]])) {
+    # Get the training set and corresponding test set for this fold
+    train_indices <- target_cv_folds[[profile_index]][[i]][["train"]]
+    test_indices <- target_cv_folds[[profile_index]][[i]][["test"]]
+    
+    # Subset the dtrain using the fold indices
+    train_set <- dtrain_list[[profile_index]][train_indices, ]
+    test_set <- dtrain_list[[profile_index]][test_indices, ]
+    
+    # Train the model on the training set
+    target_model <- xgboost(params = params, data = train_set, nrounds = nrounds, verbose = 0)
+    
+    # Store the trained model
+    target_models[[i]] <- target_model
+    
+    # Make predictions on the test set using the trained model
+    predictions <- predict(target_models[[i]], newdata = test_set, type = "prob")
+    
+    # Store the predictions for this fold
+    all_predictions[[i]] <- predictions
+    actual <- data_list[[profile_index]][test_indices, ]$target
+    
+    # Convert predicted and actual values to factors with two levels
+    predicted_factors <- factor(predictions > 0.5, levels = c(FALSE, TRUE), labels = c("0", "1"))
+    actual_factors <- factor(actual > 0.5, levels = c(FALSE, TRUE), labels = c("0", "1"))
+    
+    # Create a confusion matrix using caret
+    confusion_matrix <- caret::confusionMatrix(predicted_factors, actual_factors)
+    # Update the summed confusion matrix
+    summed_confusion_matrix <- summed_confusion_matrix + confusion_matrix$table
+    
+    # Calculate performance metrics for this fold's confusion matrix
+    accuracy <- confusion_matrix$overall["Accuracy"]
+    precision <- confusion_matrix$byClass["Pos Pred Value"]
+    recall <- confusion_matrix$byClass["Sensitivity"]
+    f1_score <- confusion_matrix$byClass["F1"]
+    
+    # Store performance metrics for this fold
+    all_accuracy <- c(all_accuracy, accuracy)
+    all_precision <- c(all_precision, precision)
+    all_recall <- c(all_recall, recall)
+    all_f1_score <- c(all_f1_score, f1_score)
+    
+    # Store the confusion matrix for this fold
+    all_confusion_matrices[[i]] <- confusion_matrix
+  }
+  
+  # Calculate performance metrics for the summed confusion matrix
+  summed_accuracy <- summed_confusion_matrix[1, 1] / sum(summed_confusion_matrix)
+  summed_precision <- summed_confusion_matrix[1, 1] / (summed_confusion_matrix[1, 1] + summed_confusion_matrix[2, 1])
+  summed_recall <- summed_confusion_matrix[1, 1] / (summed_confusion_matrix[1, 1] + summed_confusion_matrix[1, 2])
+  summed_f1_score <- 2 * summed_precision * summed_recall / (summed_precision + summed_recall)
+  
+  print(paste0("PROFILE: ", profile_index, " Complete"))
+  
+  return(list(
+    target_models,
+    all_predictions,
+    all_confusion_matrices,
+    summed_confusion_matrix,
+    all_accuracy,
+    all_precision,
+    all_recall,
+    all_f1_score,
+    summed_accuracy,
+    summed_precision,
+    summed_recall,
+    summed_f1_score
+  ))
+}
