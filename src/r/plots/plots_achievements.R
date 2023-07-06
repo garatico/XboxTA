@@ -15,22 +15,25 @@ month_colors <- c(
   "NA" = "#A9A9A9"   # Dark Gray
 )
 
-
-plot_gamer_achievement_freq_year = function(df) {
+plot_gamer_achievement_freq_year <- function(df) {
+  df$year <- as.factor(df$year)  # Convert year column to a factor
+  
   # Plot for Year
   plot_year <- ggplot(df, aes(x = year, y = n, fill = year)) +
     geom_bar(stat = "identity") +
     labs(title = "Frequency of Achievements by Year",
          x = "Year",
          y = "Frequency") +
+    scale_fill_discrete(labels = function(x) format(as.integer(x))) +  # Remove decimal places in legend
     theme_minimal()
   
   return(plot_year)
 }
 
-plot_gamer_achievement_freq_month = function(df) {
+
+plot_gamer_achievement_freq_month <- function(df) {
   # Convert month column to a factor with desired order and NA as last
-  df$month <- factor(df$month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "NA"))
+  df$month <- factor(df$month, levels = 1:12, labels = month.abb)
   
   # Plot for Month
   plot_month <- ggplot(df, aes(x = month, y = n, fill = month)) +
@@ -44,7 +47,7 @@ plot_gamer_achievement_freq_month = function(df) {
   return(plot_month)
 }
 
-plot_gamer_achievement_freq_month_year = function(df) {
+plot_gamer_achievement_freq_month_year <- function(df) {
   df <- data.frame(df)  # Convert the input list to a data frame
   
   # Replace NA values in month and year columns with a custom label
@@ -52,7 +55,7 @@ plot_gamer_achievement_freq_month_year = function(df) {
   df$year <- ifelse(is.na(df$year), "NA", as.character(df$year))
   
   # Convert month column to a factor with desired order and NA as last
-  df$month <- factor(df$month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "NA"))
+  df$month <- factor(df$month, levels = 1:12, labels = month.abb)
   
   # Plot for Month and Year
   plot_month_year <- ggplot(df, aes(x = year, y = n, fill = month)) +

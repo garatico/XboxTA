@@ -1,14 +1,20 @@
 # ===========================
 # GAME TRANSFORMATIONS
+games_transform_drop_bad_titles = function(rnd_gamers, directory_df) {
+  for (i in seq_along(rnd_gamers)) {
+    # Remove time_played for "Defiance 2050"
+    if ("Defiance 2050" %in% rnd_gamers[[i]]$game_title) {
+      rnd_gamers[[i]]$time_played[rnd_gamers[[i]]$game_title == "Defiance 2050"] <- NA
+    }
+  }
+  return(rnd_gamers)
+}
+
+
 games_transform_hours = function(rnd_gamers, directory_df) {
   # Loop through each data frame in rnd_gamers
   for (i in seq_along(rnd_gamers)) {
-    # Remove time_played for "Defiance 2050"
     game_title = rnd_gamers[[i]]$game_title
-    if ("Defiance 2050" %in% game_title) {
-      rnd_gamers[[i]]$time_played[game_title == "Defiance 2050"] <- NA
-    }
-    
     # Extract hours and minutes from time_played
     time_played = rnd_gamers[[i]]$time_played
     

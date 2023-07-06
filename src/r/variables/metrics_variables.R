@@ -27,8 +27,6 @@ process_metrics_df = function(rnd_gamers, directory_df) {
   return(metrics_df)
 }
 
-
-
 # ===========================
 # ACHIEVEMENT BASED VARIABLES
 # 1.) Churn @ 365 days
@@ -42,38 +40,27 @@ calculate_churn = function(rnd_gamers, directory_df) {
     gamertag <- rnd_gamers[[3]][i]
     matching_index <- which(directory_df$gamertag == gamertag)
     
-    if (length(matching_index) > 0) {
-      # Extract last scraped date
-      achievements_last_scraped <- tryCatch(
-        {
-          parsed_dates <- parse_date_time(directory_df$Achievements.Last.Scraped[matching_index], orders = c("Ymd HMS", "mdY HM"))
-          as.Date(parsed_dates, format = "%Y-%m-%d")
-        },
-        error = function(e) {
-          NA
-        }
-      )
-      
-      # Read achievements data for the gamer
-      achievements <- rnd_gamers[[1]][[i]]
-      
-      # Calculate churn based on last scraped date and last achievement earned
-      last_achievement = max(achievements$achievement_earned)
-      churned = last_achievement < achievements_last_scraped - 365
-      days_since_last = as.integer(achievements_last_scraped - last_achievement)
-      # Create a row for the churn data
-      churn_row <- data.frame(gamertag = gamertag, churned = churned, days_since_last = days_since_last)
-      
-      # Append the churn row to the churn data frame
-      churn_df <- rbind(churn_df, churn_row)
+    achievements_last_scraped <- if (length(matching_index) > 0) {
+      as.Date(directory_df$Achievements.Last.Scraped[matching_index], format = "%Y-%m-%d")
     } else {
-      # Handle case when matching index is not found
-      churn_row <- data.frame(gamertag = gamertag, churned = NA, days_since_last = NA)
-      churn_df <- rbind(churn_df, churn_row)
+      NA
     }
+    
+    achievements <- rnd_gamers[[1]][[i]]
+    last_achievement <- max(achievements$achievement_earned)
+    
+    churned <- ifelse(length(matching_index) > 0,
+                      difftime(last_achievement, achievements_last_scraped, units = "days") < -365,
+                      NA)
+    
+    days_since_last <- ifelse(length(matching_index) > 0,
+                              as.integer(achievements_last_scraped - last_achievement),
+                              NA)
+    
+    churn_row <- data.frame(gamertag = gamertag, churned = churned, days_since_last = days_since_last)
+    churn_df <- rbind(churn_df, churn_row)
   }
   
-  # Return the churn data frame
   return(churn_df)
 }
 
@@ -243,15 +230,7 @@ calculate_days_since_first_achievement <- function(rnd_gamers, directory_df) {
       first_achievement_date <- min(achievements$achievement_earned)
       
       # Extract last scraped date
-      achievements_last_scraped <- tryCatch(
-        {
-          parsed_dates <- parse_date_time(directory_df$Achievements.Last.Scraped[directory_df$gamertag == gamertag], orders = c("Ymd HMS", "mdY HM"))
-          as.Date(parsed_dates, format = "%Y-%m-%d")
-        },
-        error = function(e) {
-          NA
-        }
-      )
+      achievements_last_scraped <- as.Date(directory_df$Achievements.Last.Scraped[directory_df$gamertag == gamertag], format = "%Y-%m-%d")
       
       days_since_first_achievement <- as.numeric(achievements_last_scraped - first_achievement_date)
     } else {

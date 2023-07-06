@@ -6,8 +6,8 @@ source("./src/r/variables/da_variables.R")
 # SEPARATE CALCULATIONS
 # 1.)
 achievement_calculate_frequencies <- function(rnd_gamers) {
-  # Define the desired order of months
-  month_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+  # Define the desired order of months as numeric values
+  month_order <- 1:12  # 1 for January, 2 for February, and so on
   
   # Aggregate the data by month and year and count the occurrences for each data frame
   frequency_dfs <- lapply(rnd_gamers[[1]], function(df) {
@@ -18,9 +18,9 @@ achievement_calculate_frequencies <- function(rnd_gamers) {
   })
   
   # Set the order of months for each data frame
-  for (i in seq_along(frequency_dfs)) {
-    frequency_dfs[[i]]$month <- factor(frequency_dfs[[i]]$month, levels = month_order)
-  }
+  #for (i in seq_along(frequency_dfs)) {
+  #  frequency_dfs[[i]]$month <- factor(frequency_dfs[[i]]$month, levels = month_order, labels = month.abb)
+  #}
   return(frequency_dfs)
 }
 
