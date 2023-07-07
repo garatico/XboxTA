@@ -20,6 +20,11 @@ library(tidymodels)
 library(lubridate)
 library(forecast)
 library(shiny)
+
+library(htmlwidgets)
+library(widgetframe)
+library(plotly)
+
 library(xgboost)
 library(data.table)
 library(caret)
@@ -90,8 +95,9 @@ rnd_gamer_sample[[2]] = games_transform_hours(rnd_gamer_sample[[2]])
 ```
 
 # Metrics Preprocessing (Total)
-- Outputs total observations
-- Processes the metrics data frame for all profiles
+
+-   Outputs total observations
+-   Processes the metrics data frame for all profiles
 
 ```{r Metrics Preprocessing (Total Metrics)}
 print(paste("TOTAL OBSERVATIONS:", get_total_observations(rnd_gamer_sample[[1]])))
@@ -99,7 +105,8 @@ metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)
 ```
 
 # Frequency Data Preprocessing
-- Intermediate Step to analyze each profile in the sample later. 
+
+-   Intermediate Step to analyze each profile in the sample later.
 
 ```{r Metrics Preprocessing (Frequency Data)}
 frequency_dfs = achievement_calculate_frequencies(rnd_gamer_sample)
@@ -120,7 +127,8 @@ da_profiles = calculate_monthly_eir_all(da_profiles)
 ```
 
 # Leaderboard Frequency Plots
-- Outputs the frequency of score ranges for the entirety of the leaderboard
+
+-   Outputs the frequency of score ranges for the entirety of the leaderboard
 
 ```{r EDA Leaderboard}
 plot_lb_range(lb_df, "Score", 0, 4000000, 50000, 1000000)
@@ -130,9 +138,15 @@ plot_lb_range(lb_df, "Score", 500000, 1000000, 50000, 50000)
 plot_lb_range(lb_df, "Score", 1000000, 2000000, 50000, 100000)
 ```
 
+```{r EDA : Leaderboard Interactive}
+plot_lb_range_interactive(lb_df, "Score", 0, 4000000, 50000, 1000000)
+```
+
 <!--
 # Frequency Plots by Profile
-- Can select the profile and temporal metric
+
+-   Can select the profile and temporal metric
+-   **Note:** This Shiny app won't display in the self-contained HTML file. To interact with the app, you can run the RMD document in an R Markdown viewer or in the RStudio IDE.
 
 ```{r EDA Profiles Plot, echo = FALSE}
 # Define UI
@@ -180,11 +194,11 @@ server <- function(input, output) {
 # Render the Shiny app
 shinyApp(ui = ui, server = server)
 ```
-**Note:** This Shiny app won't display in the self-contained HTML file. To interact with the app, you can run the RMD document in an R Markdown viewer or in the RStudio IDE.
 -->
 
-# Churned @ 365 Days Histogram
-- Most users from this sample, approx. 75% not churned by this definition
+# Churned \@ 365 Days Histogram
+
+-   Most users from this sample, approx. 75% not churned by this definition
 
 ```{r EDA : Churned Histogram}
 # Plot histogram of churned with different colors for TRUE, FALSE, and NA
@@ -195,8 +209,9 @@ ggplot(metrics_df, aes(x = churned, fill = factor(churned))) +
 ```
 
 # Longest Streak Histogram
-- Most users have 4 or 5 days as their longest streak.
-- This sample approximates a roughly normal distribution.
+
+-   Most users have 4 or 5 days as their longest streak.
+-   This sample approximates a roughly normal distribution.
 
 ```{r EDA : Streak Histogram}
 ggplot(metrics_df, aes(x = longest_streak, fill = factor(longest_streak))) +
@@ -225,10 +240,3 @@ ggplot(metrics_df, aes(x = median_interval, y = total_game_time_minutes)) +
 ```
 
 -->
-
-
-
-
-
-
-
