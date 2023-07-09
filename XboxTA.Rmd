@@ -1,17 +1,29 @@
 ---
-title: "XboxTA"
+title: "Xbox TrueAchievements Analysis"
 author: "Giovanni Aratico"
-date: "2023-07-06"
+date: "2023-07-08"
 output:
   html_document:
+    theme: readable
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
     self_contained: true
     output_file: index.html
 ---
+# Introduction:
 
-### GOAL:
-
+## Questions to ask:
 -   Analyze time series of achievement histories of a sample of profiles.
 -   Can we forecast user engagement?
+
+## Data Details:
+- Data scraped from Xbox TrueAchievements using Python
+- Details in GitHub repository
+- Link: https://github.com/garatico/XboxTA
+
+# Setup and Read Data
 
 ```{r Setup, include=FALSE}
 set.seed(196)
@@ -64,7 +76,8 @@ rnd_gamer_sample = sample_random_gamers(200, directory_df = directory_df)
 rnd_gamer_sample = lapply(rnd_gamer_sample, function(x) x[order(rnd_gamer_sample[[3]])])
 ```
 
-### Achievement Transformations
+# Transformations
+## Achievement Transformations
 
 -   Removes character entries for achievement earned.
 -   Formats date and adds formatted columns for month, day of year and isoweek.
@@ -78,7 +91,7 @@ rnd_gamer_sample[[1]] = achievement_transform_format_dates(rnd_gamer_sample[[1]]
 rnd_gamer_sample[[1]] = achievement_transform_extract_dates(rnd_gamer_sample[[1]])
 ```
 
-# Game Transformations
+## Game Transformations
 
 -   Removes entries with unattainable values.
 -   Extracts hours and minutes and splits columns
@@ -89,7 +102,7 @@ rnd_gamer_sample[[2]] = games_transform_drop_bad_titles(rnd_gamer_sample[[2]])
 rnd_gamer_sample[[2]] = games_transform_hours(rnd_gamer_sample[[2]])
 ```
 
-# Metrics Preprocessing (Total)
+## Metrics Preprocessing (Total)
 
 -   Outputs total observations
 -   Processes the metrics data frame for all profiles
@@ -99,7 +112,7 @@ print(paste("TOTAL OBSERVATIONS:", get_total_observations(rnd_gamer_sample[[1]])
 metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)
 ```
 
-# Frequency Data Preprocessing
+## Frequency Data Preprocessing
 
 -   Intermediate Step to analyze each profile in the sample later.
 
@@ -108,6 +121,11 @@ frequency_dfs = achievement_calculate_frequencies(rnd_gamer_sample)
 frequency_combined_df = bind_rows(frequency_dfs, .id = "data_frame_id")
 frequency_combined_df$data_frame_id = as.numeric(frequency_combined_df$data_frame_id)
 ```
+
+## Daily Achievements Preprocessing
+- Creates full time series profile for each gamer
+- Calculates Churn and Existence
+- Calculates EIR's for each profile
 
 ```{r Metrics Preprocessing (Daily Achievements)}
 da_df = calculate_daily_achievements(frequency_combined_df)
@@ -121,7 +139,9 @@ da_profiles = calculate_weekly_eir_all(da_profiles)
 da_profiles = calculate_monthly_eir_all(da_profiles)
 ```
 
-# Leaderboard Frequency Plot
+# EDA (Exploratory Data Analysis)
+## Leaderboard EDA
+### Leaderboard Frequency Plot
 
 - Outputs the frequency of score ranges for the entirety of the leaderboard.
 - Interactive user can choose ranges of values.
@@ -130,12 +150,13 @@ da_profiles = calculate_monthly_eir_all(da_profiles)
 plot_lb_range_interactive(lb_df, "Score", 0, 4000000, 1000000)
 ```
 
-# Frequency Plots by Profile
+## Profile EDA
+### Frequency Plots by Profile
 
 -   Can select the profile and temporal metric
 -   **Note:** This Shiny app won't display in the self-contained HTML file. To interact with the app, you can run the RMD document in an R Markdown viewer or in the RStudio IDE.
 
-```{r EDA Profiles Plot, echo = FALSE}
+```{r EDA Profiles Plot, eval = FALSE, echo = FALSE}
 # Define UI
 ui <- fluidPage(
   titlePanel("Gamer Achievement Frequencies"),
@@ -182,7 +203,8 @@ server <- function(input, output) {
 shinyApp(ui = ui, server = server)
 ```
 
-# Churned \@ 365 Days Histogram
+## Metrics EDA
+### Churned \@ 365 Days Histogram
 
 -   Most users from this sample, approx. 75% not churned by this definition
 
@@ -194,7 +216,7 @@ ggplot(metrics_df, aes(x = churned, fill = factor(churned))) +
   labs(title = "Churned Histogram (365 Days Since Last Achievement)", x = "Churned Status", y = "Count")
 ```
 
-# Longest Streak Histogram
+### Longest Streak Histogram
 
 -   Most users have 4 or 5 days as their longest streak.
 -   This sample approximates a roughly normal distribution.
@@ -205,7 +227,7 @@ ggplot(metrics_df, aes(x = longest_streak, fill = factor(longest_streak))) +
   labs(title = "Streak Histogram", x = "Longest Streak (in Days)", y = "Count")
 ```
 
-# Game Time Box Plot
+### Game Time Box Plot
 - Most players hover in the thousands of hours with several outliers above 10,000
 - This plot only shows Xbox One and Series X|S titles. 
 
@@ -220,7 +242,7 @@ ggplot(metrics_df, aes(x = "", y = total_game_time_minutes / 60, fill = "Game Ti
   coord_flip()
 ```
 
-# App Time Box Plot
+### App Time Box Plot
 - We filter out 138 values of zero for users who don't use apps on Xbox. 
 - Of the 62 players who use apps on Xbox, most hover at or below 2,000. This suggests that the users who do have significant app time on their profile use Xbox for the apps tracked. 
 - This plot only shows Xbox One and Series X|S titles. 
@@ -236,7 +258,7 @@ ggplot(metrics_df[metrics_df$total_app_time_minutes > 0,], aes(x = "", y = total
   coord_flip()
 ```
 
-# Game vs App Time Scatter Plot
+### Game vs App Time Scatter Plot
 - Most players don't have any logged time into apps regardless of game time. This suggests from this sample most players engage in app content outside of Xbox. 
 
 ```{r EDA : Game vs App Ratio}
