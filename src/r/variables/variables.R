@@ -1,4 +1,4 @@
-source("./src/r/variables/metrics_variables.R")
+source("./src/r/variables/metrics/metrics.R")
 source("./src/r/variables/da_variables.R")
 
 

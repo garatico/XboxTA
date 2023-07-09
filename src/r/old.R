@@ -290,3 +290,114 @@ for (profile in da_profiles) {
 print(paste("Total observations:", total_observations))
 
 ```
+
+```{r EDA Leaderboard}
+plot_lb_range(lb_df, "Score", 0, 4000000, 50000, 1000000)
+plot_lb_range(lb_df, "Score", 0, 250000, 10000, 25000)
+plot_lb_range(lb_df, "Score", 250000, 500000, 10000, 25000)
+plot_lb_range(lb_df, "Score", 500000, 1000000, 50000, 50000)
+plot_lb_range(lb_df, "Score", 1000000, 2000000, 50000, 100000)
+```
+
+# 1.) Game Time Total 
+calculate_game_time_total = function(rnd_gamers, directory_df) {
+  game_times_list = list()
+  
+  # Loop through each data frame in rnd_gamers
+  for (i in 1:length(rnd_gamers[[3]])) {
+    gamertag = rnd_gamers[[3]][i]
+    games = rnd_gamers[[2]][i]
+    games = data.frame(games)
+    
+    # Extract the hours_played column
+    game_hours = games$game_hours_played
+    game_minutes = games$game_minutes_played
+    
+    # Clean the hours_played values and convert to numeric
+    cleaned_game_hours = as.numeric(gsub("[^0-9]+", "", game_hours))
+    cleaned_game_minutes = as.numeric(gsub("[^0-9]+", "", game_minutes))
+    
+    # Sum the hours played
+    total_game_hours <- sum(cleaned_game_hours, na.rm = TRUE)
+    total_game_minutes <- sum(cleaned_game_minutes, na.rm = TRUE)
+    
+    # Calculate total time in minutes
+    total_game_time_minutes <- total_game_hours * 60 + total_game_minutes
+    
+    # Create a data frame with gamertag and total hours
+    game_times_df <- data.frame(gamertag = gamertag, 
+                                total_game_hours = total_game_hours, 
+                                total_game_minutes = total_game_minutes, 
+                                total_game_time_minutes = total_game_time_minutes)
+    
+    # Add the data frame to the hours_list
+    game_times_list[[i]] <- game_times_df
+  }
+  
+  # Combine the data frames from all gamers into a single data frame
+  game_times_df <- do.call(rbind, game_times_list)
+  
+  return(game_times_df)
+}
+
+# 2.) App Time Total
+calculate_app_time_total = function(rnd_gamers, directory_df) {
+  app_times_list = list()
+  
+  # Loop through each data frame in rnd_gamers
+  for (i in 1:length(rnd_gamers[[3]])) {
+    gamertag = rnd_gamers[[3]][i]
+    games = rnd_gamers[[2]][i]
+    games = data.frame(games)
+    
+    # Extract the app_hours_played and app_minutes_played columns
+    app_hours = games$app_hours_played
+    app_minutes = games$app_minutes_played
+    
+    # Clean the app_hours_played values and convert to numeric
+    cleaned_app_hours = as.numeric(gsub("[^0-9]+", "", app_hours))
+    cleaned_app_minutes = as.numeric(gsub("[^0-9]+", "", app_minutes))
+    
+    # Sum the app hours played
+    total_app_hours <- sum(cleaned_app_hours, na.rm = TRUE)
+    total_app_minutes <- sum(cleaned_app_minutes, na.rm = TRUE)
+    
+    # Calculate total app time in minutes
+    total_app_time_minutes <- total_app_hours * 60 + total_app_minutes
+    
+    # Create a data frame with gamertag and total app hours
+    app_times_df <- data.frame(gamertag = gamertag, 
+                               total_app_hours = total_app_hours, 
+                               total_app_minutes = total_app_minutes, 
+                               total_app_time_minutes = total_app_time_minutes)
+    
+    # Add the data frame to the app_times_list
+    app_times_list[[i]] <- app_times_df
+  }
+  
+  # Combine the data frames from all gamers into a single data frame
+  app_times_df <- do.call(rbind, app_times_list)
+  
+  return(app_times_df)
+}
+
+
+
+```{r EDA Profiles Achievement Variables Plots}
+# Scatter plot
+ggplot(metrics_df, aes(x = longest_gap_within, y = total_game_time_minutes)) +
+  geom_point() +
+  labs(x = "Longest Gap Within", y = "Total Game Time (Minutes)") +
+  ggtitle("Scatter Plot: Longest Gap Within vs. Total Game Time (Minutes)")
+
+ggplot(metrics_df, aes(x = average_interval, y = total_game_time_minutes)) +
+  geom_point() +
+  labs(x = "Average Interval between Achievements (Daily) ", y = "Total Game Time (Minutes)") +
+  ggtitle("Scatter Plot: Average Interval between Achievements (Daily) vs. Total Game Time (Minutes)")
+
+ggplot(metrics_df, aes(x = median_interval, y = total_game_time_minutes)) +
+  geom_point() +
+  labs(x = "Median Interval between Achievements (Daily) ", y = "Total Game Time (Minutes)") +
+  ggtitle("Scatter Plot: Median Interval between Achievements (Daily) vs. Total Game Time (Minutes)")
+
+```
