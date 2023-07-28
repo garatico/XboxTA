@@ -1,7 +1,7 @@
 from src.py.manifest import *
-from src.py.scrape.scrape import *
+from py.scrape_main import *
 from src.py.leaderboard import *
-from src.py.scrape.rescrape import *
+from py.rescrape_main import *
 
 # LEADERBOARD OPERATIONS
 #scrape_save_pagerange(startpage = 18200, endpage = 18740, saveafter = 100)

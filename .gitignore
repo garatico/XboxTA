@@ -11,3 +11,4 @@ docs/
 __pycache__/
 src/py/__pycache__/
 src/py/scrape/__pycache__/
+.ipynb_checkpoints/
