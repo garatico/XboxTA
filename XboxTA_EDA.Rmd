@@ -1,0 +1,217 @@
+---
+title: "Xbox TrueAchievements EDA"
+output:
+  html_document:
+    theme: readable
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    self_contained: true
+    output_file: XboxTA_EDA.html
+---
+
+[Home](../index.html)
+
+[Analysis](./XboxTA_Analysis.html)
+
+[Webscraping Methodology](./XboxTA_Webscrape.html)
+
+[Exploratory Data Analysis](./XboxTA_EDA.html)
+
+```{r Setup, include=FALSE}
+set.seed(196)
+library(tidyverse)
+library(tidymodels)
+library(lubridate)
+library(forecast)
+library(shiny)
+library(plotly)
+library(xgboost)
+library(data.table)
+library(caret)
+library(stats)
+
+source("./src/r/file.R")
+source("./src/r/plots/plots.R")
+source("./src/r/transformations/feature_transformations.R")
+source("./src/r/variables/variables.R")
+source("./src/r/models/models.R")
+source("./src/r/models/ts_decomp.R")
+```
+
+```{r Create Files Directory, include=FALSE}
+directory_df = create_file_directory()
+directory_df = directory_transformations(directory_df)
+```
+
+```{r Read Manifests, include=FALSE}
+lb_df = read.csv("./data/leaderboard/leaderboard.csv")
+lb_df = lb_feature_transformations(lb_df)
+achievements_manifest = read.csv("./data/manifest/achievements_manifest.csv")
+```
+
+```{r Sample Random Gamers, include=FALSE}
+set.seed(196)
+rnd_gamer_sample = sample_random_gamers(200, directory_df = directory_df)
+rnd_gamer_sample = lapply(rnd_gamer_sample, function(x) x[order(rnd_gamer_sample[[3]])])
+```
+
+```{r Achievements Transformations, include=FALSE}
+rnd_gamer_sample[[1]] = achievement_transform_today(rnd_gamer_sample[[1]], directory_df)
+rnd_gamer_sample[[1]] = achievement_transform_yesterday(rnd_gamer_sample[[1]], directory_df)
+rnd_gamer_sample[[1]] = achievement_transform_drop_offline(rnd_gamer_sample[[1]])
+rnd_gamer_sample[[1]] = achievement_transform_format_dates(rnd_gamer_sample[[1]])
+rnd_gamer_sample[[1]] = achievement_transform_extract_dates(rnd_gamer_sample[[1]])
+```
+
+```{r Game Transformations, include=FALSE}
+rnd_gamer_sample[[2]] = games_transform_drop_bad_titles(rnd_gamer_sample[[2]])
+rnd_gamer_sample[[2]] = games_transform_hours(rnd_gamer_sample[[2]])
+```
+
+```{r Metrics Preprocessing (Total Metrics), include=FALSE}
+print(paste("TOTAL OBSERVATIONS:", get_total_observations(rnd_gamer_sample[[1]])))
+metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)
+```
+
+# EDA (Exploratory Data Analysis)
+
+## Leaderboard EDA
+
+### Leaderboard Frequency Plot
+
+-   Outputs the frequency of score ranges for the entirety of the leaderboard.
+-   Interactive user can choose ranges of values.
+
+```{r EDA : Leaderboard Interactive}
+plot_lb_range_interactive(lb_df, "Score", 0, 4000000, 1000000)
+```
+
+
+## Profile EDA
+
+### Frequency Plots by Profile
+
+-   Can select the profile and temporal metric
+-   **Note:** This Shiny app won't display in the self-contained HTML file. To interact with the app, you can run the RMD document in an R Markdown viewer or in the RStudio IDE.
+
+```{r EDA Profiles Plot, eval = FALSE, echo = FALSE}
+# Define UI
+ui <- fluidPage(
+  titlePanel("Gamer Achievement Frequencies"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      numericInput("index", "Select Frequency Index",
+                   value = 1, min = 1, max = length(frequency_dfs)),
+      radioButtons("plotType", "Select Plot Type",
+                  choices = c("Year", "Month", "Month-Year", "Week", "Weekday"),
+                  selected = "Year")
+    ),
+    
+    mainPanel(
+      plotOutput("achievementPlot")
+    )
+  )
+)
+
+# Define server
+server <- function(input, output) {
+  
+  # Render plot based on selected plot type and frequency index
+  output$achievementPlot <- renderPlot({
+    index <- input$index
+    plotType <- input$plotType
+    
+    # Choose the appropriate plot function based on the selected plot type
+    if (plotType == "Year") {
+      plot_gamer_achievement_freq_year(frequency_dfs[[index]])
+    } else if (plotType == "Month") {
+      plot_gamer_achievement_freq_month(frequency_dfs[[index]])
+    } else if (plotType == "Month-Year") {
+      plot_gamer_achievement_freq_month_year(frequency_dfs[[index]])
+    } else if (plotType == "Week") {
+      plot_gamer_achievement_freq_week(frequency_dfs[[index]])
+    } else if (plotType == "Weekday") {
+      plot_gamer_achievement_freq_weekday(frequency_dfs[[index]])
+    }
+  })
+}
+
+# Render the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+## Metrics EDA
+
+### Churned Histogram
+
+-   Most users from this sample, approx. 75% not churned by this definition
+
+```{r EDA : Churned Histogram}
+# Plot histogram of churned with different colors for TRUE, FALSE, and NA
+ggplot(metrics_df, aes(x = churned, fill = factor(churned))) +
+  geom_bar(color = "white") +
+  scale_fill_manual(values = c("darkgreen", "darkred", "gray")) +
+  labs(title = "Churned Histogram (365 Days Since Last Achievement)", x = "Churned Status", y = "Count")
+```
+
+### Longest Streak Histogram
+
+-   Most users have 4 or 5 days as their longest streak.
+-   This sample approximates a roughly normal distribution.
+
+```{r EDA : Streak Histogram}
+ggplot(metrics_df, aes(x = longest_streak, fill = factor(longest_streak))) +
+  geom_bar(color = "white") +
+  labs(title = "Streak Histogram", x = "Longest Streak (in Days)", y = "Count")
+```
+
+### Game Time Box Plot
+
+-   Most players hover in the thousands of hours with several outliers above 10,000
+-   This plot only shows Xbox One and Series X\|S titles.
+
+```{r EDA : Game Time}
+# Create the box plot for game time
+ggplot(metrics_df, aes(x = "", y = total_game_time_minutes / 60, fill = "Game Time")) +
+  geom_boxplot(width = 0.5, position = position_dodge(width = 0.9), color = "black", outlier.color = "darkred", outlier.shape = 16, outlier.size = 3) +
+  labs(x = "", y = "Game Time (Hours)", fill = "") +
+  scale_fill_manual(values = "#FF7F00") +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip()
+```
+
+### App Time Box Plot
+
+-   We filter out 138 values of zero for users who don't use apps on Xbox.
+-   Of the 62 players who use apps on Xbox, most hover at or below 2,000. This suggests that the users who do have significant app time on their profile use Xbox for the apps tracked.
+-   This plot only shows Xbox One and Series X\|S titles.
+
+```{r EDA : App Time}
+# Create the box plot
+ggplot(metrics_df[metrics_df$total_app_time_minutes > 0,], aes(x = "", y = total_app_time_minutes / 60, fill = "App Time")) +
+  geom_boxplot(width = 0.5, position = position_dodge(width = 0.9), color = "black", outlier.color = "darkblue", outlier.shape = 16, outlier.size = 3) +
+  labs(x = "", y = "App Time (Hours)", fill = "", caption = paste("Number of Zero Values Filtered Out:", sum(metrics_df$total_app_time_minutes == 0))) +
+  scale_fill_manual(values = "#1F78B4") +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip()
+```
+
+### Game vs App Time Scatter Plot
+
+-   Most players don't have any logged time into apps regardless of game time. This suggests from this sample most players engage in app content outside of Xbox.
+
+```{r EDA : Game vs App Ratio}
+ggplot(metrics_df, aes(x = total_game_time_minutes / 60, y = total_app_time_minutes / 60, color = total_app_time_minutes / 60)) +
+  geom_point() +
+  labs(x = "Total Game Time (Hours)", y = "Total App Time (Hours)", color = "Total App Time (Hours)") +
+  scale_color_gradient(low = "blue", high = "red") +
+  ggtitle("Total Time: Game vs App (Hours)") +
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+
