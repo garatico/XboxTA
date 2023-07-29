@@ -1,0 +1,744 @@
+---
+title: "Xbox TrueAchievements Analysis"
+author: "Giovanni Aratico"
+date: "2023-07-08"
+output:
+  html_document:
+    theme: readable
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    self_contained: true
+    output_file: index.html
+---
+
+[Home](../index.html)
+
+# Introduction:
+
+The goal of this project is to analyze time series collections of achievement histories of a sample of gamers on Xbox's TrueAchievements website. Using this we can answer questions such as whether we can forecast engagement. 
+
+## Data Details:
+
+Data scraped from Xbox TrueAchievements using Python with NumPy, Pandas and Selenium. Details included with full report about the methodology.
+
+[Webscraping Methodology](./XboxTA Webscraping.html)
+
+# Setup and Read Data
+
+```{r Setup, include=FALSE}
+set.seed(196)
+library(tidyverse)
+library(tidymodels)
+library(lubridate)
+library(forecast)
+library(shiny)
+library(plotly)
+library(xgboost)
+library(data.table)
+library(caret)
+library(stats)
+
+source("./src/r/file.R")
+source("./src/r/plots/plots.R")
+source("./src/r/transformations/feature_transformations.R")
+source("./src/r/variables/variables.R")
+source("./src/r/models/models.R")
+source("./src/r/models/ts_decomp.R")
+```
+
+## Create Files Directory
+
+-   Gets file directories of all CSVs to pull for analysis.
+-   Applies transformations for consistent format to dates of last scraped
+
+```{r Create Files Directory}
+directory_df = create_file_directory()
+directory_df = directory_transformations(directory_df)
+```
+
+## Read Manifests
+
+-   Load the full leaderboard of TA for exploratory data analysis.
+-   Read the full achievements manifest for later analysis.
+
+```{r Read Manifests}
+lb_df = read.csv("./data/leaderboard/leaderboard.csv")
+lb_df = lb_feature_transformations(lb_df)
+achievements_manifest = read.csv("./data/manifest/achievements_manifest.csv")
+```
+
+## Read Sample of Gamers
+
+-   We take a sample of 200 profiles using our file directory and order them.
+
+```{r Sample Random Gamers}
+set.seed(196)
+rnd_gamer_sample = sample_random_gamers(200, directory_df = directory_df)
+rnd_gamer_sample = lapply(rnd_gamer_sample, function(x) x[order(rnd_gamer_sample[[3]])])
+```
+
+# Transformations
+
+## Achievement Transformations
+
+-   Removes character entries for achievement earned.
+-   Formats date and adds formatted columns for month, day of year and isoweek.
+-   Creates column for tracking weekend / weekday
+
+```{r Achievements Transformations}
+rnd_gamer_sample[[1]] = achievement_transform_today(rnd_gamer_sample[[1]], directory_df)
+rnd_gamer_sample[[1]] = achievement_transform_yesterday(rnd_gamer_sample[[1]], directory_df)
+rnd_gamer_sample[[1]] = achievement_transform_drop_offline(rnd_gamer_sample[[1]])
+rnd_gamer_sample[[1]] = achievement_transform_format_dates(rnd_gamer_sample[[1]])
+rnd_gamer_sample[[1]] = achievement_transform_extract_dates(rnd_gamer_sample[[1]])
+```
+
+## Game Transformations
+
+-   Removes entries with unattainable values.
+-   Extracts hours and minutes and splits columns
+-   Splits app hours from game hours
+
+```{r Game Transformations}
+rnd_gamer_sample[[2]] = games_transform_drop_bad_titles(rnd_gamer_sample[[2]])
+rnd_gamer_sample[[2]] = games_transform_hours(rnd_gamer_sample[[2]])
+```
+
+## Metrics Preprocessing (Total)
+
+-   Outputs total observations
+-   Processes the metrics data frame for all profiles
+
+```{r Metrics Preprocessing (Total Metrics)}
+print(paste("TOTAL OBSERVATIONS:", get_total_observations(rnd_gamer_sample[[1]])))
+metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)
+```
+
+## Frequency Data Preprocessing
+
+-   Intermediate Step to analyze each profile in the sample later.
+
+```{r Metrics Preprocessing (Frequency Data)}
+frequency_dfs = achievement_calculate_frequencies(rnd_gamer_sample)
+frequency_combined_df = bind_rows(frequency_dfs, .id = "data_frame_id")
+frequency_combined_df$data_frame_id = as.numeric(frequency_combined_df$data_frame_id)
+```
+
+## Daily Achievements Preprocessing
+
+-   Creates full time series profile for each gamer
+-   Calculates Churn and Existence
+-   Calculates EIR's for each profile
+
+```{r Metrics Preprocessing (Daily Achievements)}
+da_df = calculate_daily_achievements(frequency_combined_df)
+da_df = da_fill_dates(da_df)
+
+da_profiles = da_split_by_profile(da_df)
+da_profiles = da_profiles_set_churn(da_profiles)
+da_profiles = da_profiles_set_days_existence(da_profiles)
+da_profiles = calculate_daily_lt_eir(da_profiles)
+da_profiles = calculate_weekly_eir_all(da_profiles)
+da_profiles = calculate_monthly_eir_all(da_profiles)
+```
+
+# EDA (Exploratory Data Analysis)
+
+## Leaderboard EDA
+
+### Leaderboard Frequency Plot
+
+-   Outputs the frequency of score ranges for the entirety of the leaderboard.
+-   Interactive user can choose ranges of values.
+
+```{r EDA : Leaderboard Interactive}
+plot_lb_range_interactive(lb_df, "Score", 0, 4000000, 1000000)
+```
+
+## Profile EDA
+
+### Frequency Plots by Profile
+
+-   Can select the profile and temporal metric
+-   **Note:** This Shiny app won't display in the self-contained HTML file. To interact with the app, you can run the RMD document in an R Markdown viewer or in the RStudio IDE.
+
+```{r EDA Profiles Plot, eval = FALSE, echo = FALSE}
+# Define UI
+ui <- fluidPage(
+  titlePanel("Gamer Achievement Frequencies"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      numericInput("index", "Select Frequency Index",
+                   value = 1, min = 1, max = length(frequency_dfs)),
+      radioButtons("plotType", "Select Plot Type",
+                  choices = c("Year", "Month", "Month-Year", "Week", "Weekday"),
+                  selected = "Year")
+    ),
+    
+    mainPanel(
+      plotOutput("achievementPlot")
+    )
+  )
+)
+
+# Define server
+server <- function(input, output) {
+  
+  # Render plot based on selected plot type and frequency index
+  output$achievementPlot <- renderPlot({
+    index <- input$index
+    plotType <- input$plotType
+    
+    # Choose the appropriate plot function based on the selected plot type
+    if (plotType == "Year") {
+      plot_gamer_achievement_freq_year(frequency_dfs[[index]])
+    } else if (plotType == "Month") {
+      plot_gamer_achievement_freq_month(frequency_dfs[[index]])
+    } else if (plotType == "Month-Year") {
+      plot_gamer_achievement_freq_month_year(frequency_dfs[[index]])
+    } else if (plotType == "Week") {
+      plot_gamer_achievement_freq_week(frequency_dfs[[index]])
+    } else if (plotType == "Weekday") {
+      plot_gamer_achievement_freq_weekday(frequency_dfs[[index]])
+    }
+  })
+}
+
+# Render the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+## Metrics EDA
+
+### Churned Histogram
+
+-   Most users from this sample, approx. 75% not churned by this definition
+
+```{r EDA : Churned Histogram}
+# Plot histogram of churned with different colors for TRUE, FALSE, and NA
+ggplot(metrics_df, aes(x = churned, fill = factor(churned))) +
+  geom_bar(color = "white") +
+  scale_fill_manual(values = c("darkgreen", "darkred", "gray")) +
+  labs(title = "Churned Histogram (365 Days Since Last Achievement)", x = "Churned Status", y = "Count")
+```
+
+### Longest Streak Histogram
+
+-   Most users have 4 or 5 days as their longest streak.
+-   This sample approximates a roughly normal distribution.
+
+```{r EDA : Streak Histogram}
+ggplot(metrics_df, aes(x = longest_streak, fill = factor(longest_streak))) +
+  geom_bar(color = "white") +
+  labs(title = "Streak Histogram", x = "Longest Streak (in Days)", y = "Count")
+```
+
+### Game Time Box Plot
+
+-   Most players hover in the thousands of hours with several outliers above 10,000
+-   This plot only shows Xbox One and Series X\|S titles.
+
+```{r EDA : Game Time}
+# Create the box plot for game time
+ggplot(metrics_df, aes(x = "", y = total_game_time_minutes / 60, fill = "Game Time")) +
+  geom_boxplot(width = 0.5, position = position_dodge(width = 0.9), color = "black", outlier.color = "darkred", outlier.shape = 16, outlier.size = 3) +
+  labs(x = "", y = "Game Time (Hours)", fill = "") +
+  scale_fill_manual(values = "#FF7F00") +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip()
+```
+
+### App Time Box Plot
+
+-   We filter out 138 values of zero for users who don't use apps on Xbox.
+-   Of the 62 players who use apps on Xbox, most hover at or below 2,000. This suggests that the users who do have significant app time on their profile use Xbox for the apps tracked.
+-   This plot only shows Xbox One and Series X\|S titles.
+
+```{r EDA : App Time}
+# Create the box plot
+ggplot(metrics_df[metrics_df$total_app_time_minutes > 0,], aes(x = "", y = total_app_time_minutes / 60, fill = "App Time")) +
+  geom_boxplot(width = 0.5, position = position_dodge(width = 0.9), color = "black", outlier.color = "darkblue", outlier.shape = 16, outlier.size = 3) +
+  labs(x = "", y = "App Time (Hours)", fill = "", caption = paste("Number of Zero Values Filtered Out:", sum(metrics_df$total_app_time_minutes == 0))) +
+  scale_fill_manual(values = "#1F78B4") +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip()
+```
+
+### Game vs App Time Scatter Plot
+
+-   Most players don't have any logged time into apps regardless of game time. This suggests from this sample most players engage in app content outside of Xbox.
+
+```{r EDA : Game vs App Ratio}
+ggplot(metrics_df, aes(x = total_game_time_minutes / 60, y = total_app_time_minutes / 60, color = total_app_time_minutes / 60)) +
+  geom_point() +
+  labs(x = "Total Game Time (Hours)", y = "Total App Time (Hours)", color = "Total App Time (Hours)") +
+  scale_color_gradient(low = "blue", high = "red") +
+  ggtitle("Total Time: Game vs App (Hours)") +
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+# Time Series Analysis
+
+## Time Series Decomposition
+
+-   We iterate over the profiles and perform time series analysis on each profile, including sorting the data, creating time series objects, and applying decompositions.
+-   If a profile has insufficient data (less than two years), the decomposition step is skipped, and the profile is not included in the final result.
+-   The code returns a list of profiles, where each profile includes the original data frame, the time series objects, and the decompositions (if applicable). Skipped profiles are NULL.
+
+```{r RQ1 : Time Series Decomposition}
+ts_profiles = da_profiles_ts_decomp(da_profiles)
+```
+
+## Time Series Decomposition Interactive Plot
+
+-   The Shiny application allows users to explore time series decomposition plots for different profiles. Users can select a profile to view their plots representing the implementations of EIR.
+-   It generates four plots using representing the original time series, trend, seasonal component, and residual component for each selected profile.
+
+```{r RQ1 : Time Series Decomposition Plots Shiny, eval = FALSE}
+# Define UI
+ui <- fluidPage(
+  titlePanel("Time Series Decomposition Plots"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("profile", "Select Profile:", choices = seq_along(ts_profiles), selected = ts_profiles[[1]], width = "25%")
+    ),
+    mainPanel(
+      plotOutput("plot1"),
+      plotOutput("plot2"),
+      plotOutput("plot3"),
+      plotOutput("plot4")
+    )
+  )
+)
+
+# Define server
+server <- function(input, output) {
+  output$plot1 <- renderPlot({
+    profile <- ts_profiles[[as.numeric(input$profile)]]
+    plot_data <- data.frame(
+      date = time(profile$ts[[1]]),
+      stringsAsFactors = FALSE
+    )
+    plot_data$original1 <- profile$ts[[1]]
+    plot_data$trend1 <- profile$decomposition[[1]][["trend"]]
+    plot_data$seasonal1 <- profile$decomposition[[1]][["seasonal"]]
+    plot_data$residual1 <- profile$decomposition[[1]][["random"]]
+    
+    ggplot(plot_data, aes(x = date)) +
+      geom_line(aes(y = original1, color = "Original")) +
+      geom_line(aes(y = trend1, color = "Trend")) +
+      geom_line(aes(y = seasonal1, color = "Seasonal")) +
+      geom_line(aes(y = residual1, color = "Residual")) +
+      labs(x = "Date", y = "Value", color = "Component") +
+      scale_color_manual(values = c("Original" = "black", "Trend" = "blue",
+                                    "Seasonal" = "red", "Residual" = "green")) +
+      facet_wrap(~ "Time Series 1: Daily Lifetime EIR", ncol = 1) +
+      theme_minimal()
+  })
+  
+  output$plot2 <- renderPlot({
+    profile <- ts_profiles[[as.numeric(input$profile)]]
+    plot_data <- data.frame(
+      date = time(profile$ts[[2]]),
+      stringsAsFactors = FALSE
+    )
+    plot_data$original2 <- profile$ts[[2]]
+    plot_data$trend2 <- profile$decomposition[[2]][["trend"]]
+    plot_data$seasonal2 <- profile$decomposition[[2]][["seasonal"]]
+    plot_data$residual2 <- profile$decomposition[[2]][["random"]]
+    
+    ggplot(plot_data, aes(x = date)) +
+      geom_line(aes(y = original2, color = "Original")) +
+      geom_line(aes(y = trend2, color = "Trend")) +
+      geom_line(aes(y = seasonal2, color = "Seasonal")) +
+      geom_line(aes(y = residual2, color = "Residual")) +
+      labs(x = "Date", y = "Value", color = "Component") +
+      scale_color_manual(values = c("Original" = "black", "Trend" = "blue",
+                                    "Seasonal" = "red", "Residual" = "green")) +
+      facet_wrap(~ "Time Series 2: Weekly EIR", ncol = 1) +
+      theme_minimal()
+  })
+  
+  output$plot3 <- renderPlot({
+    profile <- ts_profiles[[as.numeric(input$profile)]]
+    plot_data <- data.frame(
+      date = time(profile$ts[[3]]),
+      stringsAsFactors = FALSE
+    )
+    plot_data$original3 <- profile$ts[[3]]
+    plot_data$trend3 <- profile$decomposition[[3]][["trend"]]
+    plot_data$seasonal3 <- profile$decomposition[[3]][["seasonal"]]
+    plot_data$residual3 <- profile$decomposition[[3]][["random"]]
+    
+    ggplot(plot_data, aes(x = date)) +
+      geom_line(aes(y = original3, color = "Original")) +
+      geom_line(aes(y = trend3, color = "Trend")) +
+      geom_line(aes(y = seasonal3, color = "Seasonal")) +
+      geom_line(aes(y = residual3, color = "Residual")) +
+      labs(x = "Date", y = "Value", color = "Component") +
+      scale_color_manual(values = c("Original" = "black", "Trend" = "blue",
+                                    "Seasonal" = "red", "Residual" = "green")) +
+      facet_wrap(~ "Time Series 3: Monthly EIR", ncol = 1) +
+      theme_minimal()
+  })
+  
+  output$plot4 <- renderPlot({
+    profile <- ts_profiles[[as.numeric(input$profile)]]
+    plot_data <- data.frame(
+      date = time(profile$ts[[4]]),
+      stringsAsFactors = FALSE
+    )
+    plot_data$original4 <- profile$ts[[4]]
+    plot_data$trend4 <- profile$decomposition[[4]][["trend"]]
+    plot_data$seasonal4 <- profile$decomposition[[4]][["seasonal"]]
+    plot_data$residual4 <- profile$decomposition[[4]][["random"]]
+    
+    ggplot(plot_data, aes(x = date)) +
+      geom_line(aes(y = original4, color = "Original")) +
+      geom_line(aes(y = trend4, color = "Trend")) +
+      geom_line(aes(y = seasonal4, color = "Seasonal")) +
+      geom_line(aes(y = residual4, color = "Residual")) +
+      labs(x = "Date", y = "Value", color = "Component") +
+      scale_color_manual(values = c("Original" = "black", "Trend" = "blue",
+                                    "Seasonal" = "red", "Residual" = "green")) +
+      facet_wrap(~ "Time Series 4: Days Since Achievement Earned", ncol = 1) +
+      theme_minimal()
+  })
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+# Model Preparation
+
+## \##
+
+```{r RQ1 : Model Preparation, eval = FALSE}
+ts_profiles <- ts_profiles %>% keep(~ !is.null(.))
+
+# Initialize empty lists for data and dtrain
+t1_data_list <- list()
+t1_dtrain_list <- list()
+
+t2_data_list = list()
+t2_dtrain_list = list()
+
+t3_data_list = list()
+t3_dtrain_list = list()
+
+t4_data_list = list()
+t4_dtrain_list = list()
+
+t5_data_list = list()
+t5_dtrain_list = list()
+
+for (i in 1:length(ts_profiles)) {
+  for (j in 1:5) {  # Loop over target variables (j = 1 for ts[[1]], j = 2 for ts[[2]])
+    # Extract the target variable (daily_lt_eir) and create lagged variables as features
+    target <- as.vector(ts_profiles[[i]][["ts"]][[j]])
+    # Add a small constant to handle zero values and apply log transformation
+    #target_transformed <- log(target + 1e-6)
+    lag_1day = lag(target, 1)
+    lag_1week = lag(target, 7)
+    lag_2week = lag(target, 14)
+    lag_1month = lag(target, 28)
+    year = ts_profiles[[i]][["profile"]][["year"]]
+    month.x = ts_profiles[[i]][["profile"]][["month.x"]]
+    day_of_year = ts_profiles[[i]][["profile"]][["day_of_year"]]
+    week = ts_profiles[[i]][["profile"]][["week"]]
+    
+    # Combine the features and target into a data frame
+    data <- data.frame(target, year, month.x, day_of_year, week, lag_1day, lag_1week, lag_2week, lag_1month)
+    data <- na.omit(data)  # Remove rows with missing values
+    
+    # Convert the data to DMatrix format
+    dtrain <- xgb.DMatrix(data = as.matrix(data[, -1]), label = data[, 1])
+    
+    # Add the data and dtrain to their respective lists
+    if (j == 1) {
+      t1_data_list[[i]] <- data
+      t1_dtrain_list[[i]] <- dtrain
+    } else if (j == 2) {
+      t2_data_list[[i]] <- data
+      t2_dtrain_list[[i]] <- dtrain
+    } else if (j == 3) {
+      t3_data_list[[i]] <- data
+      t3_dtrain_list[[i]] <- dtrain
+    } else if (j == 4) {
+      t4_data_list[[i]] <- data
+      t4_dtrain_list[[i]] <- dtrain
+    } else if (j == 5) {
+      t5_data_list[[i]] <- data
+      t5_dtrain_list[[i]] <- dtrain
+    }
+  }
+}
+
+rm(data)
+rm(dtrain)
+```
+
+-   Hyperparameters include Cross Folds and Nrounds.
+-   Cross Folds tested at 5, 10, and 25.
+-   Nrounds tested at 100 and 1000
+
+```{r RQ1 : Cross Validation Create Folds, eval = FALSE}
+t1_5fold_full = get_cv_folds(t1_data_list, 5)
+t1_10fold_full = get_cv_folds(t1_data_list, 10)
+t1_25fold_full = get_cv_folds(t1_data_list, 25)
+
+# Assuming you have an xgb.DMatrix called "dtrain"
+t1_params <- list(
+  objective = "reg:squarederror",
+  eval_metric = "rmse",
+  max_depth = 8,
+  eta = 0.1,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
+```
+
+```{r RQ1 : Model Train 100n, eval = FALSE}
+# 100 BOOST ROUNDS
+t1_5fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
+t1_10fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
+t1_25fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
+```
+
+```{r RQ1 : Model Train 1000n, eval = FALSE}
+# 1000 BOOST ROUNDS
+#t1_5fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
+#t1_10fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
+#t1_25fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
+
+```
+
+```{r RQ1 : Performance Metrics Shiny 100n, eval = FALSE}
+# UI
+ui <- fluidPage(
+  titlePanel("Evaluation Metrics"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("profile", "Select Profile:", choices = c(1:189))
+    ),
+    mainPanel(
+      plotOutput("t1_5fold_100n_metrics_plot"),
+      plotOutput("t1_10fold_100n_metrics_plot"),
+      plotOutput("t1_25fold_100n_metrics_plot"),
+      tableOutput("mean_metrics")
+    )
+  )
+)
+
+# Server
+server <- function(input, output, session) {
+  output$t1_5fold_100n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_5fold_100n_metrics_df <- data.frame(
+      Fold = 1:length(t1_5fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = t1_5fold_100n_models[[profile]][[3]][[1]],
+      MAPE = t1_5fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = t1_5fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_5fold_100n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics (5 Fold) - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_10fold_100n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_10fold_100n_metrics_df <- data.frame(
+      Fold = 1:length(t1_10fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = t1_10fold_100n_models[[profile]][[3]][[1]],
+      MAPE = t1_10fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = t1_10fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_10fold_100n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics (10 Fold) - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_25fold_100n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_25fold_100n_metrics_df <- data.frame(
+      Fold = 1:length(t1_25fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = t1_25fold_100n_models[[profile]][[3]][[1]],
+      MAPE = t1_25fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = t1_25fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_25fold_100n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics (25 Fold) - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$mean_metrics <- renderTable({
+  profile <- as.integer(input$profile)
+  
+  # Create a data frame with the mean metrics for the selected profile
+  mean_metrics_df <- data.frame(
+    Metric = rep(c("Mean RMSE", "Mean MAPE", "Mean SMAPE"), times = 3),
+    Value = c(
+      t1_5fold_100n_models[[profile]][[4]],
+      t1_5fold_100n_models[[profile]][[5]],
+      t1_5fold_100n_models[[profile]][[6]],
+      t1_10fold_100n_models[[profile]][[4]],
+      t1_10fold_100n_models[[profile]][[5]],
+      t1_10fold_100n_models[[profile]][[6]],
+      t1_25fold_100n_models[[profile]][[4]],
+      t1_25fold_100n_models[[profile]][[5]],
+      t1_25fold_100n_models[[profile]][[6]]
+    ),
+    Fold = rep(c("5-fold", "10-fold", "25-fold"), each = 3)
+  )
+  
+  mean_metrics_df
+})
+
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+
+```
+
+```{r RQ1 : Performance Metrics Shiny 1000n, eval = FALSE}
+# UI
+ui <- fluidPage(
+  titlePanel("Evaluation Metrics"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("profile", "Select Profile:", choices = c(1:189))
+    ),
+    mainPanel(
+      plotOutput("t1_5fold_1000n_metrics_plot"),
+      plotOutput("t1_10fold_1000n_metrics_plot"),
+      plotOutput("t1_25fold_1000n_metrics_plot"),
+      tableOutput("mean_metrics")
+    )
+  )
+)
+
+# Server
+server <- function(input, output, session) {
+  output$t1_5fold_1000n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_5fold_1000n_metrics_df <- data.frame(
+      Fold = 1:length(t1_5fold_1000n_models[[profile]][[3]][[1]]),
+      RMSE = t1_5fold_1000n_models[[profile]][[3]][[1]],
+      MAPE = t1_5fold_1000n_models[[profile]][[3]][[2]],
+      SMAPE = t1_5fold_100n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_5fold_1000n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_10fold_1000n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_10fold_1000n_metrics_df <- data.frame(
+      Fold = 1:length(t1_10fold_1000n_models[[profile]][[3]][[1]]),
+      RMSE = t1_10fold_1000n_models[[profile]][[3]][[1]],
+      MAPE = t1_10fold_1000n_models[[profile]][[3]][[2]],
+      SMAPE = t1_10fold_1000n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_10fold_1000n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$t1_25fold_1000n_metrics_plot <- renderPlot({
+    profile <- as.integer(input$profile)
+    # Create a data frame with the evaluation metrics for the selected profile
+    t1_25fold_1000n_metrics_df <- data.frame(
+      Fold = 1:length(t1_25fold_1000n_models[[profile]][[3]][[1]]),
+      RMSE = t1_25fold_1000n_models[[profile]][[3]][[1]],
+      MAPE = t1_25fold_1000n_models[[profile]][[3]][[2]],
+      SMAPE = t1_25fold_1000n_models[[profile]][[3]][[3]]
+    )
+    # Plot the evaluation metrics
+    ggplot(t1_25fold_1000n_metrics_df, aes(x = Fold)) +
+      geom_line(aes(y = RMSE, color = "RMSE"), size = 1) +
+      geom_line(aes(y = MAPE, color = "MAPE"), size = 1) +
+      geom_line(aes(y = SMAPE, color = "SMAPE"), size = 1) +
+      labs(title = paste("Evaluation Metrics - Profile", profile),
+           x = "Fold",
+           y = "Value",
+           color = "Metric") +
+      scale_color_manual(values = c("RMSE" = "red", "MAPE" = "blue", "SMAPE" = "green")) +
+      theme_minimal()
+  })
+  output$mean_metrics <- renderTable({
+    profile <- as.integer(input$profile)
+    
+    # Create a data frame with the mean metrics for the selected profile
+    mean_metrics_df <- data.frame(
+      Metric = c("Mean RMSE", "Mean RMSE", "Mean RMSE", "Mean MAPE", "Mean MAPE", "Mean MAPE", "Mean SMAPE", "Mean SMAPE", "Mean SMAPE"),
+      Value = c(
+        t1_5fold_1000n_models[[profile]][[4]],
+        t1_10fold_1000n_models[[profile]][[4]],
+        t1_25fold_1000n_models[[profile]][[4]],
+        t1_5fold_1000n_models[[profile]][[5]],
+        t1_10fold_1000n_models[[profile]][[5]],
+        t1_25fold_1000n_models[[profile]][[5]],
+        t1_5fold_1000n_models[[profile]][[6]],
+        t1_10fold_1000n_models[[profile]][[6]],
+        t1_25fold_1000n_models[[profile]][[6]]
+      ),
+      Fold = rep(c("5-fold", "10-fold", "25-fold"), each = 3)
+    )
+    
+    mean_metrics_df
+  })
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+
+```

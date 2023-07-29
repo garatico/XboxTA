@@ -7442,7 +7442,18 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="Xbox-TrueAchievements-Web-Scraping">Xbox TrueAchievements Web Scraping<a class="anchor-link" href="#Xbox-TrueAchievements-Web-Scraping">¶</a></h1><p>This notebook outlines the processes and methods used to scrape the data from TrueAchievements.com.</p>
+<p><a href="../index.html">Return Home</a></p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Xbox-TrueAchievements-Web-Scraping">Xbox TrueAchievements Web Scraping<a class="anchor-link" href="#Xbox-TrueAchievements-Web-Scraping">¶</a></h1><p>This notebook outlines the processes and methods used to scrape the data from TrueAchievements.com. The libraries utilized include NumPy, Pandas and Selenium.</p>
 </div>
 </div>
 </div>
@@ -7451,7 +7462,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">src.py.manifest</span> <span class="kn">import</span> <span class="o">*</span>
@@ -7474,7 +7485,8 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Leaderboard-Operations">Leaderboard Operations<a class="anchor-link" href="#Leaderboard-Operations">¶</a></h2><p>First we use a web scraper to extract data for all players on the leaderboard. Users can choose the start and end pages for data extraction and specify the frequency of CSV file saves during scraping. As the scraper progresses, data is automatically saved in CSV files at the specified intervals, ensuring secure storage. Each CSV file contains collected data up to that point. Additionally, the project provides a method to merge individual CSV files into a single comprehensive CSV, creating a unified dataset ready for further analysis or integration into data pipelines.</p>
+<h2 id="Leaderboard-Operations">Leaderboard Operations<a class="anchor-link" href="#Leaderboard-Operations">¶</a></h2><p>First we use a web scraper to extract data for all players on the leaderboard. Users can choose the start and end pages for data extraction and specify the frequency of CSV file saves during scraping. As the scraper progresses, data is automatically saved in CSV files at the specified intervals, ensuring secure storage. Each CSV file contains collected data up to that point. This method is primarily used to get a collection user profile URLs to be used for scraping later as individual analysis will be more accurate.</p>
+<p>Additionally, the project provides a method to merge individual CSV files into a single comprehensive CSV, creating a unified dataset ready for further analysis or integration into data pipelines.</p>
 </div>
 </div>
 </div>
@@ -7500,18 +7512,8 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Gamer-Operations">Gamer Operations<a class="anchor-link" href="#Gamer-Operations">¶</a></h2><p>We have two methods to extract individual gamer's information. The first method allows users to specify the sample size and choose between scraping achievements or games histories data. Users can select the data type according to their specific needs. The second method focuses on scraping the locations of all gamers from their profiles, whenever available.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="Gamer-Achievements">Gamer Achievements<a class="anchor-link" href="#Gamer-Achievements">¶</a></h4>
+<h2 id="Gamer-Profile-Operations">Gamer Profile Operations<a class="anchor-link" href="#Gamer-Profile-Operations">¶</a></h2><p>We have two methods to extract individual gamer's information. The first method allows users to specify the sample size and choose between scraping achievements or games histories data. Users can select the data type according to their specific needs.</p>
+<p>The second method focuses on scraping the locations of all gamers from their profiles, whenever available.</p>
 </div>
 </div>
 </div>
@@ -7529,17 +7531,6 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="Gamer-Games">Gamer Games<a class="anchor-link" href="#Gamer-Games">¶</a></h4>
-</div>
-</div>
-</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7551,17 +7542,6 @@ a.anchor-link {
 <div class="highlight hl-ipython3"><pre><span></span><span class="c1">#scrape_random_gamers_data(sample_size = 5, data_type="games")  # Scrape random gamer games</span>
 </pre></div>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="Gamer-Locations">Gamer Locations<a class="anchor-link" href="#Gamer-Locations">¶</a></h4>
 </div>
 </div>
 </div>
@@ -7590,29 +7570,16 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">update_gamer_manifest</span><span class="p">()</span>
 </pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Gamer manifest updated.
-</pre>
 </div>
 </div>
 </div>
@@ -7628,17 +7595,6 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="Incomplete-Achievements-Scrape">Incomplete Achievements Scrape<a class="anchor-link" href="#Incomplete-Achievements-Scrape">¶</a></h4>
-</div>
-</div>
-</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7650,17 +7606,6 @@ a.anchor-link {
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">scrape_incomplete_profiles_achievements</span><span class="p">()</span>
 </pre></div>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="Incomplete-Games-Scrape">Incomplete Games Scrape<a class="anchor-link" href="#Incomplete-Games-Scrape">¶</a></h4>
 </div>
 </div>
 </div>
@@ -7698,7 +7643,20 @@ a.anchor-link {
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="c1">#rescrape_profiles_achievements()</span>
-<span class="c1">#rescrape_profiles_games()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="c1">#rescrape_profiles_games()</span>
 </pre></div>
 </div>
 </div>
