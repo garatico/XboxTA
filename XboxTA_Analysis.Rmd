@@ -53,8 +53,7 @@ source("./src/r/models/ts_decomp.R")
 
 ## Create Files Directory
 
--   Gets file directories of all CSVs to pull for analysis.
--   Applies transformations for consistent format to dates of last scraped
+Here we get the file directories of all CSVs from the different gamer profiles to pull for analysis. This then applies transformations to keep a consistent format of dates of when the files were last scraped. 
 
 ```{r Create Files Directory}
 directory_df = create_file_directory()
@@ -111,8 +110,7 @@ rnd_gamer_sample[[2]] = games_transform_hours(rnd_gamer_sample[[2]])
 
 ## Metrics Preprocessing (Total)
 
--   Outputs total observations
--   Processes the metrics data frame for all profiles
+We output the total observations across all the sampled profiles to the screen. We then process through those profiles to generate a data frame of metrics akin to summary statistics.
 
 ```{r Metrics Preprocessing (Total Metrics)}
 print(paste("TOTAL OBSERVATIONS:", get_total_observations(rnd_gamer_sample[[1]])))
@@ -151,9 +149,7 @@ da_profiles = calculate_monthly_eir_all(da_profiles)
 
 ## Time Series Decomposition
 
--   We iterate over the profiles and perform time series analysis on each profile, including sorting the data, creating time series objects, and applying decompositions.
--   If a profile has insufficient data (less than two years), the decomposition step is skipped, and the profile is not included in the final result.
--   The code returns a list of profiles, where each profile includes the original data frame, the time series objects, and the decompositions (if applicable). Skipped profiles are NULL.
+We iterate over the profiles and perform time series analysis on each profile, including sorting the data, creating time series objects, and applying decompositions. If a profile has insufficient data (less than two years), the decomposition step is skipped, and the profile is not included in the final result. The code returns a list of profiles, where each profile includes the original data frame, the time series objects, and the decompositions (if applicable). Skipped profiles are NULL.
 
 ```{r RQ1 : Time Series Decomposition}
 ts_profiles = da_profiles_ts_decomp(da_profiles)
@@ -161,8 +157,7 @@ ts_profiles = da_profiles_ts_decomp(da_profiles)
 
 ## Time Series Decomposition Interactive Plot
 
--   The Shiny application allows users to explore time series decomposition plots for different profiles. Users can select a profile to view their plots representing the implementations of EIR.
--   It generates four plots using representing the original time series, trend, seasonal component, and residual component for each selected profile.
+This Shiny application allows users to explore time series decomposition plots for the different profiles in the sample. Users can select a profile to view their plots representing the implementations of EIR. It generates four plots using representing the original time series, trend, seasonal component, and residual component for each selected profile.
 
 ```{r RQ1 : Time Series Decomposition Plots Shiny, eval = FALSE}
 # Define UI

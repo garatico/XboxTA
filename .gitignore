@@ -1,5 +1,9 @@
 # Ignore local data and document files
-data/
+data/sql/
+data/manifest/
+data/leaderboard/
+data/game pass/
+data/gamer/raw_data/non-anonymous/
 docs/
 
 # Ignore R config files
