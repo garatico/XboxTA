@@ -40,6 +40,29 @@ def anonymize_filenames_in_directory(nonanon_directory, anon_directory, data_typ
     
     return id_mapping
 
+def anonymize_manifest(manifest_path, id_mapping):
+    df = pd.read_csv(manifest_path)
+    
+    # Replace gamertags with their corresponding IDs using id_mapping
+    if "GamerTag" in df.columns:
+        df["GamerTag"] = df["GamerTag"].map(id_mapping)
+    
+    # Process URLs and other modifications if needed
+    df = remove_gamerid_and_hash_from_urls(df)
+
+    # Drop the "Link" column
+    if "Link" in df.columns:
+        df = df.drop(columns=["Link"])
+    
+    # Save the anonymized manifest with IDs
+    manifest_dir, manifest_file = os.path.split(manifest_path)
+    anonymized_manifest_file = os.path.splitext(manifest_file)[0] + "_anonymous.csv"
+    anonymized_manifest_path = os.path.join(manifest_dir, anonymized_manifest_file)
+    df.to_csv(anonymized_manifest_path, index=False)
+    
+    print(f"Anonymized manifest saved as: {anonymized_manifest_path}")
+
+
 # Subsequent method for further processing the anonymized files
 def process_anonymized_filenames(anon_directory, data_types, id_mapping):
     # Example implementation - Print the mapping of original prefixes to random IDs

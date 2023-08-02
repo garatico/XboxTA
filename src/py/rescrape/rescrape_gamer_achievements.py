@@ -4,7 +4,7 @@ from datetime import *
 import pandas as pd
 
 from src.py.scrape.scrape_gamer_achievements import *
-from src.py.manifest import return_incomplete_gamers_manifest
+from src.py.manifest_main import return_incomplete_gamers_manifest
 from src.py.scrape_main import *
 
 # SCRAPE INCOMPLETE PROFILE METHODS

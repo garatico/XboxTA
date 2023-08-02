@@ -37,10 +37,10 @@ sample_random_gamers <- function(num_files, directory_df) {
 }
 
 create_file_directory = function() {
-  achievements_csvs = list.files("./data/gamer/achievements/",
+  achievements_csvs = list.files("./data/gamer/raw_data/anonymous/achievements/",
                                  pattern = "_achievements.csv",
                                  full.names = TRUE)
-  games_csvs = list.files("./data/gamer/games/",
+  games_csvs = list.files("./data/gamer/raw_data/anonymous/games/",
                           pattern = "_games.csv",
                           full.names = TRUE)
   
@@ -57,7 +57,7 @@ create_file_directory = function() {
   directory_df = merge(achievement_directory_df, games_directory_df, by = "gamertag", all = TRUE)
   
   # Read gamer_manifest.csv
-  gamer_manifest = read.csv("./data/manifest/gamer_manifest.csv")
+  gamer_manifest = read.csv("./data/manifest/gamer_manifest_anonymous.csv")
   
   # Merge directory_df with gamer_manifest based on gamertag/GamerTag
   directory_df = merge(directory_df, gamer_manifest, by.x = "gamertag", by.y = "GamerTag", all = TRUE)
