@@ -62,8 +62,7 @@ directory_df = directory_transformations(directory_df)
 
 ## Read Manifests
 
--   Load the full leaderboard of TA for exploratory data analysis.
--   Read the full achievements manifest for later analysis.
+The full leaderboard of TA for future scraping outside of analysis and exploratory data analysis is loaded as well as the full manifest of achievements from the sample of profiles scraped thus far.
 
 ```{r Read Manifests}
 lb_df = read.csv("./data/leaderboard/leaderboard.csv")
@@ -73,7 +72,7 @@ achievements_manifest = read.csv("./data/manifest/achievements_manifest.csv")
 
 ## Read Sample of Gamers
 
--   We take a sample of 200 profiles using our file directory and order them.
+A sample of 200 profiles using our file directory is taken and ordered by their anonymized IDs, generated from their orignial gamertags. 
 
 ```{r Sample Random Gamers}
 set.seed(196)
@@ -85,9 +84,7 @@ rnd_gamer_sample = lapply(rnd_gamer_sample, function(x) x[order(rnd_gamer_sample
 
 ## Achievement Transformations
 
--   Removes character entries for achievement earned.
--   Formats date and adds formatted columns for month, day of year and isoweek.
--   Creates column for tracking weekend / weekday
+Character type entries for when an achievement is earned are removed and replace with calculations of when the data was scraped. Currently two possibilities exist in "Today" and "Yesterday". Dates are formatted to one format and columns are added for month, day of the year and isoweek. A column tracking weekend / weekday is added here. 
 
 ```{r Achievements Transformations}
 rnd_gamer_sample[[1]] = achievement_transform_today(rnd_gamer_sample[[1]], directory_df)
@@ -99,9 +96,7 @@ rnd_gamer_sample[[1]] = achievement_transform_extract_dates(rnd_gamer_sample[[1]
 
 ## Game Transformations
 
--   Removes entries with unattainable values.
--   Extracts hours and minutes and splits columns
--   Splits app hours from game hours
+Entries with unattainable values are removed. Currently, one title in "Defiance 2050" consistently shows absurdly high hours. Hours and minutes are split into different columns for both video games and apps. This is help remove the possiblity of hours from app time bloating a single profile.
 
 ```{r Game Transformations}
 rnd_gamer_sample[[2]] = games_transform_drop_bad_titles(rnd_gamer_sample[[2]])
@@ -119,7 +114,7 @@ metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)
 
 ## Frequency Data Preprocessing
 
--   Intermediate Step to analyze each profile in the sample later.
+This intermediate step analyzes each profile in the sample by getting the frequency of achievements earned for every day. Note that this step does not include days in which no achievements were earned. 
 
 ```{r Metrics Preprocessing (Frequency Data)}
 frequency_dfs = achievement_calculate_frequencies(rnd_gamer_sample)
@@ -129,9 +124,7 @@ frequency_combined_df$data_frame_id = as.numeric(frequency_combined_df$data_fram
 
 ## Daily Achievements Preprocessing
 
--   Creates full time series profile for each gamer
--   Calculates Churn and Existence
--   Calculates EIR's for each profile
+First we create a daily time series profile for each gamer for every day from when their first achievement is earned to when the data was last scraped. From here we can calculate churn and the variations of the EIR (Engagement Intensity Ratio) for the different profiles. These variations include the daily lifetime, weekly and monthly EIR. For these calculations, an additional column tracking how many days the profile has existed is implemented. 
 
 ```{r Metrics Preprocessing (Daily Achievements)}
 da_df = calculate_daily_achievements(frequency_combined_df)
@@ -277,9 +270,9 @@ shinyApp(ui = ui, server = server)
 
 # Model Preparation
 
-## \##
+We prepare our models for evaluation by first creating lists containing the indices for the training and testing sets for each of the target variables. For each of the target variables, lagged version are coded in at one day, one week, two weeks and four weeks. 
 
-```{r RQ1 : Model Preparation, eval = FALSE}
+```{r RQ1 : Model Preparation}
 ts_profiles <- ts_profiles %>% keep(~ !is.null(.))
 
 # Initialize empty lists for data and dtrain

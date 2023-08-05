@@ -7465,14 +7465,15 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">src.py.manifest</span> <span class="kn">import</span> <span class="o">*</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">src.py.manifest_main</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">src.py.scrape_main</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">src.py.rescrape.rescrape_gamer_achievements</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">src.py.rescrape.rescrape_gamer_games</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">src.py.leaderboard</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">src.py.anonymize</span> <span class="kn">import</span> <span class="o">*</span>
 
 <span class="c1">#from src.py.sql.leaderboard import *</span>
 <span class="c1">#import sqlite3</span>
@@ -7498,7 +7499,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="c1">#scrape_save_pagerange(startpage = 18200, endpage = 18740, saveafter = 100)</span>
@@ -7556,7 +7557,7 @@ a.anchor-link {
 <div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">scrape_all_gamer_locations</span><span class="p">()</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="c1">#scrape_all_gamer_locations()</span>
 </pre></div>
 </div>
 </div>
@@ -7713,6 +7714,562 @@ a.anchor-link {
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">check_duplicates_all_profiles</span><span class="p">(</span><span class="s2">"./data/gamer/achievements/"</span><span class="p">,</span> <span class="n">metric_type</span><span class="o">=</span><span class="s2">"achievements"</span><span class="p">)</span>
 <span class="n">check_duplicates_all_profiles</span><span class="p">(</span><span class="s2">"./data/gamer/games/"</span><span class="p">,</span> <span class="n">metric_type</span><span class="o">=</span><span class="s2">"games"</span><span class="p">)</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="Anonymize-Filenames-in-Raw-Data-Folder">Anonymize Filenames in Raw Data Folder<a class="anchor-link" href="#Anonymize-Filenames-in-Raw-Data-Folder">¶</a></h2><p>Here we convert the prefix which contains the gamertag of the CSV files to a 6 character length string of uppercase letters and numbers. This will be used to better track and anonymously so the data of gamers within the sample.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">nonanon_directory</span> <span class="o">=</span> <span class="s2">"./data/gamer/raw_data/non-anonymous/"</span>
+<span class="n">anon_directory</span> <span class="o">=</span> <span class="s2">"./data/gamer/raw_data/anonymous/"</span>
+<span class="n">manifest_directory</span> <span class="o">=</span> <span class="s2">"./data/manifest/gamer_manifest.csv"</span>
+<span class="n">data_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"achievements"</span><span class="p">,</span> <span class="s2">"games"</span><span class="p">,</span> <span class="s2">"metrics"</span><span class="p">]</span>
+
+<span class="c1"># Anonymize files for achievements, games, and metrics</span>
+<span class="n">id_mapping</span> <span class="o">=</span> <span class="n">anonymize_filenames_in_directory</span><span class="p">(</span><span class="n">nonanon_directory</span><span class="p">,</span> <span class="n">anon_directory</span><span class="p">,</span> <span class="n">data_types</span><span class="p">)</span>
+
+<span class="c1"># Anonymize manifest</span>
+<span class="n">anonymize_manifest</span><span class="p">(</span><span class="n">manifest_directory</span><span class="p">,</span> <span class="n">id_mapping</span><span class="p">)</span>
+
+<span class="c1"># Process anonymized files for achievements, games, and metrics</span>
+<span class="n">process_anonymized_filenames</span><span class="p">(</span><span class="n">anon_directory</span><span class="p">,</span> <span class="n">data_types</span><span class="p">,</span> <span class="n">id_mapping</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="Anonymize-IDs-within-Files">Anonymize IDs within Files<a class="anchor-link" href="#Anonymize-IDs-within-Files">¶</a></h2><p>Here we sift through the newly anonymous files and remove all instances of the user ID attached to each one. This then completes the process of making all data anonymous.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="c1"># Remove user IDs attached to achievement files</span>
+<span class="n">process_files_in_directory</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">anon_directory</span><span class="si">}{</span><span class="n">data_types</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Processing files in directory:
+Processed 0CQ54C_achievements.csv
+Processed 0GL02Q_achievements.csv
+Processed 0QWNL0_achievements.csv
+Processed 0RP69G_achievements.csv
+Processed 0T40IH_achievements.csv
+Processed 0ZR8V9_achievements.csv
+Processed 13NL40_achievements.csv
+Processed 15H8JC_achievements.csv
+Processed 1TA10U_achievements.csv
+Processed 1WJL2N_achievements.csv
+Processed 29LT3U_achievements.csv
+Processed 2G296X_achievements.csv
+Processed 2LVNGU_achievements.csv
+Processed 2P7I5B_achievements.csv
+Processed 2VZHKA_achievements.csv
+Processed 3BHZ4Q_achievements.csv
+Processed 3M8NB9_achievements.csv
+Processed 3TS1LC_achievements.csv
+Processed 42CX0Y_achievements.csv
+Processed 42G6V8_achievements.csv
+Processed 4587RO_achievements.csv
+Processed 4FLIUE_achievements.csv
+Processed 4KSNN1_achievements.csv
+Processed 4NICPT_achievements.csv
+Processed 4OVOFD_achievements.csv
+Processed 4VILQ8_achievements.csv
+Processed 58J8J7_achievements.csv
+Processed 5ELGIW_achievements.csv
+Processed 5EWXUP_achievements.csv
+Processed 5HJUI1_achievements.csv
+Processed 5K3NKH_achievements.csv
+Processed 5LWVET_achievements.csv
+Processed 5P5VDF_achievements.csv
+Processed 621GLI_achievements.csv
+Processed 635VFN_achievements.csv
+Processed 6IYCV1_achievements.csv
+Processed 6O38V1_achievements.csv
+Processed 6YJDXR_achievements.csv
+Processed 70XUDG_achievements.csv
+Processed 71224V_achievements.csv
+Processed 7A60XN_achievements.csv
+Processed 7A61YZ_achievements.csv
+Processed 7BJMBP_achievements.csv
+Processed 7I2X4X_achievements.csv
+Processed 7JZ247_achievements.csv
+Processed 7NTQGP_achievements.csv
+Processed 7XF4ME_achievements.csv
+Processed 84ELNI_achievements.csv
+Processed 868CV7_achievements.csv
+Processed 8BNCBT_achievements.csv
+Processed 8CKAVT_achievements.csv
+Processed 8LQ9LN_achievements.csv
+Processed 8M43YB_achievements.csv
+Processed 8MMPQ2_achievements.csv
+Processed 8QRUZR_achievements.csv
+Processed 8V28NY_achievements.csv
+Processed 94YZSY_achievements.csv
+Processed 99H584_achievements.csv
+Processed 9LCKDK_achievements.csv
+Processed 9W0U0Z_achievements.csv
+Processed A6T9ZM_achievements.csv
+Processed ALQK9L_achievements.csv
+Processed B3X75R_achievements.csv
+Processed BCFGXN_achievements.csv
+Processed BDGAJ6_achievements.csv
+Processed BE9UJP_achievements.csv
+Processed BQZLTU_achievements.csv
+Processed BUMQ0R_achievements.csv
+Processed BWS0VT_achievements.csv
+Processed BWZNA8_achievements.csv
+Processed BXUMBG_achievements.csv
+Processed C2IWT6_achievements.csv
+Processed CDM86M_achievements.csv
+Processed CLLB6W_achievements.csv
+Processed CPUIBW_achievements.csv
+Processed D24GPD_achievements.csv
+Processed DASVZZ_achievements.csv
+Processed DC4WU7_achievements.csv
+Processed DF0PB2_achievements.csv
+Processed DYUI71_achievements.csv
+Processed E5X2GK_achievements.csv
+Processed E93LEW_achievements.csv
+Processed E95K6N_achievements.csv
+Processed EC403K_achievements.csv
+Processed ED3I4R_achievements.csv
+Processed EEPSM9_achievements.csv
+Processed EG9U19_achievements.csv
+Processed EGLZ63_achievements.csv
+Processed EGOYTZ_achievements.csv
+Processed EKKUMK_achievements.csv
+Processed ENE3TX_achievements.csv
+Processed ENSFKS_achievements.csv
+Processed ENW1RR_achievements.csv
+Processed ES3YCC_achievements.csv
+Processed F4721M_achievements.csv
+Processed FIV6BB_achievements.csv
+Processed FKHDZX_achievements.csv
+Processed FLH6I7_achievements.csv
+Processed FSNPI0_achievements.csv
+Processed FTAR0K_achievements.csv
+Processed FXKT7L_achievements.csv
+Processed G3DR1H_achievements.csv
+Processed G7PS1F_achievements.csv
+Processed GIBOCV_achievements.csv
+Processed H8O2OV_achievements.csv
+Processed HOG8EW_achievements.csv
+Processed HRHSRQ_achievements.csv
+Processed I5Z6KF_achievements.csv
+Processed IBX9K2_achievements.csv
+Processed IEE0VJ_achievements.csv
+Processed IKZYG2_achievements.csv
+Processed IO3VGC_achievements.csv
+Processed IYZ05Z_achievements.csv
+Processed J6M2LS_achievements.csv
+Processed J7UYTR_achievements.csv
+Processed J7W14T_achievements.csv
+Processed JASU9U_achievements.csv
+Processed JS0KSR_achievements.csv
+Processed JWRCMH_achievements.csv
+Processed KEWY2S_achievements.csv
+Processed KP9L13_achievements.csv
+Processed KPISEY_achievements.csv
+Processed KPNHJD_achievements.csv
+Processed KW1FK8_achievements.csv
+Processed KYDI4W_achievements.csv
+Processed KZNR1L_achievements.csv
+Processed L2GX8E_achievements.csv
+Processed L77NX9_achievements.csv
+Processed LV9OFJ_achievements.csv
+Processed M1C4FR_achievements.csv
+Processed MM2JF4_achievements.csv
+Processed MR57KI_achievements.csv
+Processed MTWJUH_achievements.csv
+Processed MWOKMF_achievements.csv
+Processed MY6TMG_achievements.csv
+Processed N8MOC9_achievements.csv
+Processed NQ7L4Y_achievements.csv
+Processed NWWVGN_achievements.csv
+Processed OFNEZK_achievements.csv
+Processed ORX88M_achievements.csv
+Processed OUTTQA_achievements.csv
+Processed OY6UEB_achievements.csv
+Processed P022D8_achievements.csv
+Processed P1VF88_achievements.csv
+Processed P4NN3Q_achievements.csv
+Processed P4XZCD_achievements.csv
+Processed P81WVS_achievements.csv
+Processed PARJ6H_achievements.csv
+Processed PEUAEB_achievements.csv
+Processed PF44DQ_achievements.csv
+Processed PFKFRE_achievements.csv
+Processed PQM5PG_achievements.csv
+Processed PRV4X7_achievements.csv
+Processed PTK7OB_achievements.csv
+Processed PX6FE5_achievements.csv
+Processed QBGRZ2_achievements.csv
+Processed QFPHMK_achievements.csv
+Processed QI99SC_achievements.csv
+Processed QKDMIM_achievements.csv
+Processed QKFVFH_achievements.csv
+Processed QO8VVF_achievements.csv
+Processed QPQEQZ_achievements.csv
+Processed R5WNB3_achievements.csv
+Processed RIISJR_achievements.csv
+Processed RVMF3O_achievements.csv
+Processed RYHSGN_achievements.csv
+Processed S37PN2_achievements.csv
+Processed S5XKJG_achievements.csv
+Processed SKOJU5_achievements.csv
+Processed SN0010_achievements.csv
+Processed SQ00RH_achievements.csv
+Processed SSS4QW_achievements.csv
+Processed T01QD4_achievements.csv
+Processed T1EMYF_achievements.csv
+Processed T5ZB9D_achievements.csv
+Processed T7A240_achievements.csv
+Processed TJOGZ3_achievements.csv
+Processed TMVDM6_achievements.csv
+Processed TYETX5_achievements.csv
+Processed UO7OZE_achievements.csv
+Processed UVB0GE_achievements.csv
+Processed UWXNIJ_achievements.csv
+Processed UY2YB9_achievements.csv
+Processed UYZIUI_achievements.csv
+Processed V0SWSG_achievements.csv
+Processed V2WR8N_achievements.csv
+Processed V3F21L_achievements.csv
+Processed V78JYT_achievements.csv
+Processed VA2Z2R_achievements.csv
+Processed VCMYBH_achievements.csv
+Processed VMR240_achievements.csv
+Processed VTFWSI_achievements.csv
+Processed VVJLD7_achievements.csv
+Processed W4AA0I_achievements.csv
+Processed W7MHPE_achievements.csv
+Processed WASUR2_achievements.csv
+Processed WJ1KBR_achievements.csv
+Processed WVOGCC_achievements.csv
+Processed WYODXQ_achievements.csv
+Processed X55F0D_achievements.csv
+Processed X72SCB_achievements.csv
+Processed XCE4QL_achievements.csv
+Processed XEMJNP_achievements.csv
+Processed XG1T2L_achievements.csv
+Processed XG9FNK_achievements.csv
+Processed XKOAWC_achievements.csv
+Processed Y0OZX7_achievements.csv
+Processed Y1TAYE_achievements.csv
+Processed Y34NIY_achievements.csv
+Processed YAN03L_achievements.csv
+Processed YEXNEI_achievements.csv
+Processed YIFV5V_achievements.csv
+Processed YKCFB5_achievements.csv
+Processed YNJL76_achievements.csv
+Processed YOWXZ0_achievements.csv
+Processed YTBGF8_achievements.csv
+Processed YUWBPL_achievements.csv
+Processed YXXD54_achievements.csv
+Processed Z4AYM6_achievements.csv
+Processed Z5JT3X_achievements.csv
+Processed Z7A6EF_achievements.csv
+Processed ZLZUE5_achievements.csv
+Processed ZMHYNH_achievements.csv
+Processed ZT9FLY_achievements.csv
+Processed ZTNL7M_achievements.csv
+Processed ZY87DZ_achievements.csv
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="c1"># Remove user IDs attached to game files</span>
+<span class="n">process_files_in_directory</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">anon_directory</span><span class="si">}{</span><span class="n">data_types</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Processing files in directory:
+Processed 0CQ54C_games.csv
+Processed 0GL02Q_games.csv
+Processed 0QWNL0_games.csv
+Processed 0RP69G_games.csv
+Processed 0T40IH_games.csv
+Processed 0ZR8V9_games.csv
+Processed 13NL40_games.csv
+Processed 15H8JC_games.csv
+Processed 1TA10U_games.csv
+Processed 1WJL2N_games.csv
+Processed 29LT3U_games.csv
+Processed 2G296X_games.csv
+Processed 2LVNGU_games.csv
+Processed 2P7I5B_games.csv
+Processed 2VZHKA_games.csv
+Processed 3BHZ4Q_games.csv
+Processed 3M8NB9_games.csv
+Processed 3TS1LC_games.csv
+Processed 42CX0Y_games.csv
+Processed 42G6V8_games.csv
+Processed 4587RO_games.csv
+Processed 4FLIUE_games.csv
+Processed 4KSNN1_games.csv
+Processed 4NICPT_games.csv
+Processed 4OVOFD_games.csv
+Processed 4VILQ8_games.csv
+Processed 58J8J7_games.csv
+Processed 5ELGIW_games.csv
+Processed 5EWXUP_games.csv
+Processed 5HJUI1_games.csv
+Processed 5K3NKH_games.csv
+Processed 5LWVET_games.csv
+Processed 5P5VDF_games.csv
+Processed 621GLI_games.csv
+Processed 635VFN_games.csv
+Processed 6IYCV1_games.csv
+Processed 6O38V1_games.csv
+Processed 6YJDXR_games.csv
+Processed 70XUDG_games.csv
+Processed 71224V_games.csv
+Processed 7A60XN_games.csv
+Processed 7A61YZ_games.csv
+Processed 7BJMBP_games.csv
+Processed 7I2X4X_games.csv
+Processed 7JZ247_games.csv
+Processed 7NTQGP_games.csv
+Processed 7XF4ME_games.csv
+Processed 84ELNI_games.csv
+Processed 868CV7_games.csv
+Processed 8BNCBT_games.csv
+Processed 8CKAVT_games.csv
+Processed 8LQ9LN_games.csv
+Processed 8M43YB_games.csv
+Processed 8MMPQ2_games.csv
+Processed 8QRUZR_games.csv
+Processed 8V28NY_games.csv
+Processed 94YZSY_games.csv
+Processed 99H584_games.csv
+Processed 9LCKDK_games.csv
+Processed 9W0U0Z_games.csv
+Processed A6T9ZM_games.csv
+Processed ALQK9L_games.csv
+Processed B3X75R_games.csv
+Processed BCFGXN_games.csv
+Processed BDGAJ6_games.csv
+Processed BE9UJP_games.csv
+Processed BQZLTU_games.csv
+Processed BUMQ0R_games.csv
+Processed BWS0VT_games.csv
+Processed BWZNA8_games.csv
+Processed BXUMBG_games.csv
+Processed C2IWT6_games.csv
+Processed CDM86M_games.csv
+Processed CLLB6W_games.csv
+Processed CPUIBW_games.csv
+Processed D24GPD_games.csv
+Processed DASVZZ_games.csv
+Processed DC4WU7_games.csv
+Processed DF0PB2_games.csv
+Processed DYUI71_games.csv
+Processed E5X2GK_games.csv
+Processed E93LEW_games.csv
+Processed E95K6N_games.csv
+Processed EC403K_games.csv
+Processed ED3I4R_games.csv
+Processed EEPSM9_games.csv
+Processed EG9U19_games.csv
+Processed EGLZ63_games.csv
+Processed EGOYTZ_games.csv
+Processed EKKUMK_games.csv
+Processed ENE3TX_games.csv
+Processed ENSFKS_games.csv
+Processed ENW1RR_games.csv
+Processed ES3YCC_games.csv
+Processed F4721M_games.csv
+Processed FIV6BB_games.csv
+Processed FKHDZX_games.csv
+Processed FLH6I7_games.csv
+Processed FSNPI0_games.csv
+Processed FTAR0K_games.csv
+Processed FXKT7L_games.csv
+Processed G3DR1H_games.csv
+Processed G7PS1F_games.csv
+Processed GIBOCV_games.csv
+Processed H8O2OV_games.csv
+Processed HOG8EW_games.csv
+Processed HRHSRQ_games.csv
+Processed I5Z6KF_games.csv
+Processed IBX9K2_games.csv
+Processed IEE0VJ_games.csv
+Processed IKZYG2_games.csv
+Processed IO3VGC_games.csv
+Processed IYZ05Z_games.csv
+Processed J6M2LS_games.csv
+Processed J7UYTR_games.csv
+Processed J7W14T_games.csv
+Processed JASU9U_games.csv
+Processed JS0KSR_games.csv
+Processed JWRCMH_games.csv
+Processed KEWY2S_games.csv
+Processed KP9L13_games.csv
+Processed KPISEY_games.csv
+Processed KPNHJD_games.csv
+Processed KW1FK8_games.csv
+Processed KYDI4W_games.csv
+Processed KZNR1L_games.csv
+Processed L2GX8E_games.csv
+Processed L77NX9_games.csv
+Processed LV9OFJ_games.csv
+Processed M1C4FR_games.csv
+Processed MM2JF4_games.csv
+Processed MR57KI_games.csv
+Processed MTWJUH_games.csv
+Processed MWOKMF_games.csv
+Processed MY6TMG_games.csv
+Processed N8MOC9_games.csv
+Processed NQ7L4Y_games.csv
+Processed NWWVGN_games.csv
+Processed OFNEZK_games.csv
+Processed ORX88M_games.csv
+Processed OUTTQA_games.csv
+Processed OY6UEB_games.csv
+Processed P022D8_games.csv
+Processed P1VF88_games.csv
+Processed P4NN3Q_games.csv
+Processed P4XZCD_games.csv
+Processed P81WVS_games.csv
+Processed PARJ6H_games.csv
+Processed PEUAEB_games.csv
+Processed PF44DQ_games.csv
+Processed PFKFRE_games.csv
+Processed PQM5PG_games.csv
+Processed PRV4X7_games.csv
+Processed PTK7OB_games.csv
+Processed PX6FE5_games.csv
+Processed QBGRZ2_games.csv
+Processed QFPHMK_games.csv
+Processed QI99SC_games.csv
+Processed QKDMIM_games.csv
+Processed QKFVFH_games.csv
+Processed QO8VVF_games.csv
+Processed QPQEQZ_games.csv
+Processed R5WNB3_games.csv
+Processed RIISJR_games.csv
+Processed RVMF3O_games.csv
+Processed RYHSGN_games.csv
+Processed S37PN2_games.csv
+Processed S5XKJG_games.csv
+Processed SKOJU5_games.csv
+Processed SN0010_games.csv
+Processed SQ00RH_games.csv
+Processed SSS4QW_games.csv
+Processed T01QD4_games.csv
+Processed T1EMYF_games.csv
+Processed T5ZB9D_games.csv
+Processed T7A240_games.csv
+Processed TJOGZ3_games.csv
+Processed TMVDM6_games.csv
+Processed TYETX5_games.csv
+Processed UO7OZE_games.csv
+Processed UVB0GE_games.csv
+Processed UWXNIJ_games.csv
+Processed UY2YB9_games.csv
+Processed UYZIUI_games.csv
+Processed V0SWSG_games.csv
+Processed V2WR8N_games.csv
+Processed V3F21L_games.csv
+Processed V78JYT_games.csv
+Processed VA2Z2R_games.csv
+Processed VCMYBH_games.csv
+Processed VMR240_games.csv
+Processed VTFWSI_games.csv
+Processed VVJLD7_games.csv
+Processed W4AA0I_games.csv
+Processed W7MHPE_games.csv
+Processed WASUR2_games.csv
+Processed WJ1KBR_games.csv
+Processed WVOGCC_games.csv
+Processed WYODXQ_games.csv
+Processed X55F0D_games.csv
+Processed X72SCB_games.csv
+Processed XCE4QL_games.csv
+Processed XEMJNP_games.csv
+Processed XG1T2L_games.csv
+Processed XG9FNK_games.csv
+Processed XKOAWC_games.csv
+Processed Y0OZX7_games.csv
+Processed Y1TAYE_games.csv
+Processed Y34NIY_games.csv
+Processed YAN03L_games.csv
+Processed YEXNEI_games.csv
+Processed YIFV5V_games.csv
+Processed YKCFB5_games.csv
+Processed YNJL76_games.csv
+Processed YOWXZ0_games.csv
+Processed YTBGF8_games.csv
+Processed YUWBPL_games.csv
+Processed YXXD54_games.csv
+Processed Z4AYM6_games.csv
+Processed Z5JT3X_games.csv
+Processed Z7A6EF_games.csv
+Processed ZLZUE5_games.csv
+Processed ZMHYNH_games.csv
+Processed ZT9FLY_games.csv
+Processed ZTNL7M_games.csv
+Processed ZY87DZ_games.csv
+</pre>
 </div>
 </div>
 </div>

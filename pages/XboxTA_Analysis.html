@@ -1516,30 +1516,26 @@ methodology.</p>
 <h1>Setup and Read Data</h1>
 <div id="create-files-directory" class="section level2">
 <h2>Create Files Directory</h2>
-<ul>
-<li>Gets file directories of all CSVs to pull for analysis.</li>
-<li>Applies transformations for consistent format to dates of last
-scraped</li>
-</ul>
+<p>Here we get the file directories of all CSVs from the different gamer
+profiles to pull for analysis. This then applies transformations to keep
+a consistent format of dates of when the files were last scraped.</p>
 <pre class="r"><code>directory_df = create_file_directory()
 directory_df = directory_transformations(directory_df)</code></pre>
 </div>
 <div id="read-manifests" class="section level2">
 <h2>Read Manifests</h2>
-<ul>
-<li>Load the full leaderboard of TA for exploratory data analysis.</li>
-<li>Read the full achievements manifest for later analysis.</li>
-</ul>
+<p>The full leaderboard of TA for future scraping outside of analysis
+and exploratory data analysis is loaded as well as the full manifest of
+achievements from the sample of profiles scraped thus far.</p>
 <pre class="r"><code>lb_df = read.csv(&quot;./data/leaderboard/leaderboard.csv&quot;)
 lb_df = lb_feature_transformations(lb_df)
 achievements_manifest = read.csv(&quot;./data/manifest/achievements_manifest.csv&quot;)</code></pre>
 </div>
 <div id="read-sample-of-gamers" class="section level2">
 <h2>Read Sample of Gamers</h2>
-<ul>
-<li>We take a sample of 200 profiles using our file directory and order
-them.</li>
-</ul>
+<p>A sample of 200 profiles using our file directory is taken and
+ordered by their anonymized IDs, generated from their orignial
+gamertags.</p>
 <pre class="r"><code>set.seed(196)
 rnd_gamer_sample = sample_random_gamers(200, directory_df = directory_df)
 rnd_gamer_sample = lapply(rnd_gamer_sample, function(x) x[order(rnd_gamer_sample[[3]])])</code></pre>
@@ -1549,12 +1545,11 @@ rnd_gamer_sample = lapply(rnd_gamer_sample, function(x) x[order(rnd_gamer_sample
 <h1>Transformations</h1>
 <div id="achievement-transformations" class="section level2">
 <h2>Achievement Transformations</h2>
-<ul>
-<li>Removes character entries for achievement earned.</li>
-<li>Formats date and adds formatted columns for month, day of year and
-isoweek.</li>
-<li>Creates column for tracking weekend / weekday</li>
-</ul>
+<p>Character type entries for when an achievement is earned are removed
+and replace with calculations of when the data was scraped. Currently
+two possibilities exist in “Today” and “Yesterday”. Dates are formatted
+to one format and columns are added for month, day of the year and
+isoweek. A column tracking weekend / weekday is added here.</p>
 <pre class="r"><code>rnd_gamer_sample[[1]] = achievement_transform_today(rnd_gamer_sample[[1]], directory_df)
 rnd_gamer_sample[[1]] = achievement_transform_yesterday(rnd_gamer_sample[[1]], directory_df)
 rnd_gamer_sample[[1]] = achievement_transform_drop_offline(rnd_gamer_sample[[1]])
@@ -1563,46 +1558,47 @@ rnd_gamer_sample[[1]] = achievement_transform_extract_dates(rnd_gamer_sample[[1]
 </div>
 <div id="game-transformations" class="section level2">
 <h2>Game Transformations</h2>
-<ul>
-<li>Removes entries with unattainable values.</li>
-<li>Extracts hours and minutes and splits columns</li>
-<li>Splits app hours from game hours</li>
-</ul>
+<p>Entries with unattainable values are removed. Currently, one title in
+“Defiance 2050” consistently shows absurdly high hours. Hours and
+minutes are split into different columns for both video games and apps.
+This is help remove the possiblity of hours from app time bloating a
+single profile.</p>
 <pre class="r"><code>rnd_gamer_sample[[2]] = games_transform_drop_bad_titles(rnd_gamer_sample[[2]])
 rnd_gamer_sample[[2]] = games_transform_hours(rnd_gamer_sample[[2]])</code></pre>
 </div>
 <div id="metrics-preprocessing-total" class="section level2">
 <h2>Metrics Preprocessing (Total)</h2>
-<ul>
-<li>Outputs total observations</li>
-<li>Processes the metrics data frame for all profiles</li>
-</ul>
+<p>We output the total observations across all the sampled profiles to
+the screen. We then process through those profiles to generate a data
+frame of metrics akin to summary statistics.</p>
 <pre class="r"><code>print(paste(&quot;TOTAL OBSERVATIONS:&quot;, get_total_observations(rnd_gamer_sample[[1]])))</code></pre>
-<pre><code>## [1] &quot;TOTAL OBSERVATIONS: 380929&quot;</code></pre>
+<pre><code>## [1] &quot;TOTAL OBSERVATIONS: 400396&quot;</code></pre>
 <pre class="r"><code>metrics_df = process_metrics_df(rnd_gamer_sample, directory_df)</code></pre>
 </div>
 <div id="frequency-data-preprocessing" class="section level2">
 <h2>Frequency Data Preprocessing</h2>
-<ul>
-<li>Intermediate Step to analyze each profile in the sample later.</li>
-</ul>
+<p>This intermediate step analyzes each profile in the sample by getting
+the frequency of achievements earned for every day. Note that this step
+does not include days in which no achievements were earned.</p>
 <pre class="r"><code>frequency_dfs = achievement_calculate_frequencies(rnd_gamer_sample)
 frequency_combined_df = bind_rows(frequency_dfs, .id = &quot;data_frame_id&quot;)
 frequency_combined_df$data_frame_id = as.numeric(frequency_combined_df$data_frame_id)</code></pre>
 </div>
 <div id="daily-achievements-preprocessing" class="section level2">
 <h2>Daily Achievements Preprocessing</h2>
-<ul>
-<li>Creates full time series profile for each gamer</li>
-<li>Calculates Churn and Existence</li>
-<li>Calculates EIR’s for each profile</li>
-</ul>
+<p>First we create a daily time series profile for each gamer for every
+day from when their first achievement is earned to when the data was
+last scraped. From here we can calculate churn and the variations of the
+EIR (Engagement Intensity Ratio) for the different profiles. These
+variations include the daily lifetime, weekly and monthly EIR. For these
+calculations, an additional column tracking how many days the profile
+has existed is implemented.</p>
 <pre class="r"><code>da_df = calculate_daily_achievements(frequency_combined_df)
 da_df = da_fill_dates(da_df)
 
 da_profiles = da_split_by_profile(da_df)
 da_profiles = da_profiles_set_churn(da_profiles)</code></pre>
-<pre><code>## [1] &quot;PROFILE: 145 DROPPED (All NA values)&quot;</code></pre>
+<pre><code>## [1] &quot;PROFILE: 58 DROPPED (All NA values)&quot;</code></pre>
 <pre class="r"><code>da_profiles = da_profiles_set_days_existence(da_profiles)
 da_profiles = calculate_daily_lt_eir(da_profiles)
 da_profiles = calculate_weekly_eir_all(da_profiles)
@@ -1613,41 +1609,34 @@ da_profiles = calculate_monthly_eir_all(da_profiles)</code></pre>
 <h1>Time Series Analysis</h1>
 <div id="time-series-decomposition" class="section level2">
 <h2>Time Series Decomposition</h2>
-<ul>
-<li>We iterate over the profiles and perform time series analysis on
-each profile, including sorting the data, creating time series objects,
-and applying decompositions.</li>
-<li>If a profile has insufficient data (less than two years), the
-decomposition step is skipped, and the profile is not included in the
-final result.</li>
-<li>The code returns a list of profiles, where each profile includes the
-original data frame, the time series objects, and the decompositions (if
-applicable). Skipped profiles are NULL.</li>
-</ul>
+<p>We iterate over the profiles and perform time series analysis on each
+profile, including sorting the data, creating time series objects, and
+applying decompositions. If a profile has insufficient data (less than
+two years), the decomposition step is skipped, and the profile is not
+included in the final result. The code returns a list of profiles, where
+each profile includes the original data frame, the time series objects,
+and the decompositions (if applicable). Skipped profiles are NULL.</p>
 <pre class="r"><code>ts_profiles = da_profiles_ts_decomp(da_profiles)</code></pre>
-<pre><code>## [1] &quot;Insufficient data for profile 12 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 24 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 27 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 55 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 56 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 113 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 120 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 157 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 170 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 193 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 194 - skipping decomposition.&quot;
-## [1] &quot;Insufficient data for profile 199 - skipping decomposition.&quot;</code></pre>
+<pre><code>## [1] &quot;Insufficient data for profile 4 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 19 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 20 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 61 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 88 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 96 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 107 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 115 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 131 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 153 - skipping decomposition.&quot;
+## [1] &quot;Insufficient data for profile 191 - skipping decomposition.&quot;</code></pre>
 </div>
 <div id="time-series-decomposition-interactive-plot" class="section level2">
 <h2>Time Series Decomposition Interactive Plot</h2>
-<ul>
-<li>The Shiny application allows users to explore time series
-decomposition plots for different profiles. Users can select a profile
-to view their plots representing the implementations of EIR.</li>
-<li>It generates four plots using representing the original time series,
-trend, seasonal component, and residual component for each selected
-profile.</li>
-</ul>
+<p>This Shiny application allows users to explore time series
+decomposition plots for the different profiles in the sample. Users can
+select a profile to view their plots representing the implementations of
+EIR. It generates four plots using representing the original time
+series, trend, seasonal component, and residual component for each
+selected profile.</p>
 <pre class="r"><code># Define UI
 ui &lt;- fluidPage(
   titlePanel(&quot;Time Series Decomposition Plots&quot;),
@@ -1765,8 +1754,10 @@ shinyApp(ui = ui, server = server)</code></pre>
 </div>
 <div id="model-preparation" class="section level1">
 <h1>Model Preparation</h1>
-<div id="section" class="section level2">
-<h2>#</h2>
+<p>We prepare our models for evaluation by first creating lists
+containing the indices for the training and testing sets for each of the
+target variables. For each of the target variables, lagged version are
+coded in at one day, one week, two weeks and four weeks.</p>
 <pre class="r"><code>ts_profiles &lt;- ts_profiles %&gt;% keep(~ !is.null(.))
 
 # Initialize empty lists for data and dtrain
@@ -2070,7 +2061,6 @@ server &lt;- function(input, output, session) {
 
 # Run the Shiny app
 shinyApp(ui = ui, server = server)</code></pre>
-</div>
 </div>
 
 
