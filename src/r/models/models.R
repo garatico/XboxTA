@@ -1,4 +1,36 @@
-
+prepare_models = function(ts_profiles, target_variable) {
+  # Initialize empty lists for data and dtrain
+  target_variable_data_list = list()
+  target_variable_dtrain_list = list()
+  
+  for (i in 1:length(ts_profiles)) {
+    # Extract the target variable (daily_lt_eir) and create lagged variables as features
+    target = as.vector(ts_profiles[[i]][["ts"]][[target_variable]])
+    # Add a small constant to handle zero values and apply log transformation
+    #target_transformed <- log(target + 1e-6)
+    lag_1day = lag(target, 1)
+    lag_7days = lag(target, 7)
+    lag_14days = lag(target, 14)
+    lag_28days = lag(target, 28)
+    year = ts_profiles[[i]][["profile"]][["year"]]
+    month.x = ts_profiles[[i]][["profile"]][["month.x"]]
+    day_of_year = ts_profiles[[i]][["profile"]][["day_of_year"]]
+    week = ts_profiles[[i]][["profile"]][["week"]]
+    
+    # Combine the features and target into a data frame
+    data = data.frame(target, year, month.x, day_of_year, week, lag_1day, lag_7days, lag_14days, lag_28days)
+    data = na.omit(data)  # Remove rows with missing values
+    
+    # Convert the data to DMatrix format
+    dtrain = xgb.DMatrix(data = as.matrix(data[, -1]), label = data[, 1])
+    
+    target_variable_data_list[[i]] = data
+    target_variable_dtrain_list[[i]] = dtrain
+  }
+  # Return the lists
+  return(list(data_list = target_variable_data_list, dtrain_list = target_variable_dtrain_list))
+  
+}
 
 get_cv_folds = function(target_data, fold_count) {
   cv_folds_full <- vector("list", length(target_data))  # Initialize with the correct length

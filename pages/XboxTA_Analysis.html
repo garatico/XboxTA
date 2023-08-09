@@ -1629,208 +1629,47 @@ and the decompositions (if applicable). Skipped profiles are NULL.</p>
 ## [1] &quot;Insufficient data for profile 153 - skipping decomposition.&quot;
 ## [1] &quot;Insufficient data for profile 191 - skipping decomposition.&quot;</code></pre>
 </div>
-<div id="time-series-decomposition-interactive-plot" class="section level2">
-<h2>Time Series Decomposition Interactive Plot</h2>
+<div id="interactive-plot" class="section level2">
+<h2>Interactive Plot</h2>
 <p>This Shiny application allows users to explore time series
 decomposition plots for the different profiles in the sample. Users can
 select a profile to view their plots representing the implementations of
 EIR. It generates four plots using representing the original time
 series, trend, seasonal component, and residual component for each
 selected profile.</p>
-<pre class="r"><code># Define UI
-ui &lt;- fluidPage(
-  titlePanel(&quot;Time Series Decomposition Plots&quot;),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput(&quot;profile&quot;, &quot;Select Profile:&quot;, choices = seq_along(ts_profiles), selected = ts_profiles[[1]], width = &quot;25%&quot;)
-    ),
-    mainPanel(
-      plotOutput(&quot;plot1&quot;),
-      plotOutput(&quot;plot2&quot;),
-      plotOutput(&quot;plot3&quot;),
-      plotOutput(&quot;plot4&quot;)
-    )
-  )
-)
-
-# Define server
-server &lt;- function(input, output) {
-  output$plot1 &lt;- renderPlot({
-    profile &lt;- ts_profiles[[as.numeric(input$profile)]]
-    plot_data &lt;- data.frame(
-      date = time(profile$ts[[1]]),
-      stringsAsFactors = FALSE
-    )
-    plot_data$original1 &lt;- profile$ts[[1]]
-    plot_data$trend1 &lt;- profile$decomposition[[1]][[&quot;trend&quot;]]
-    plot_data$seasonal1 &lt;- profile$decomposition[[1]][[&quot;seasonal&quot;]]
-    plot_data$residual1 &lt;- profile$decomposition[[1]][[&quot;random&quot;]]
-    
-    ggplot(plot_data, aes(x = date)) +
-      geom_line(aes(y = original1, color = &quot;Original&quot;)) +
-      geom_line(aes(y = trend1, color = &quot;Trend&quot;)) +
-      geom_line(aes(y = seasonal1, color = &quot;Seasonal&quot;)) +
-      geom_line(aes(y = residual1, color = &quot;Residual&quot;)) +
-      labs(x = &quot;Date&quot;, y = &quot;Value&quot;, color = &quot;Component&quot;) +
-      scale_color_manual(values = c(&quot;Original&quot; = &quot;black&quot;, &quot;Trend&quot; = &quot;blue&quot;,
-                                    &quot;Seasonal&quot; = &quot;red&quot;, &quot;Residual&quot; = &quot;green&quot;)) +
-      facet_wrap(~ &quot;Time Series 1: Daily Lifetime EIR&quot;, ncol = 1) +
-      theme_minimal()
-  })
-  
-  output$plot2 &lt;- renderPlot({
-    profile &lt;- ts_profiles[[as.numeric(input$profile)]]
-    plot_data &lt;- data.frame(
-      date = time(profile$ts[[2]]),
-      stringsAsFactors = FALSE
-    )
-    plot_data$original2 &lt;- profile$ts[[2]]
-    plot_data$trend2 &lt;- profile$decomposition[[2]][[&quot;trend&quot;]]
-    plot_data$seasonal2 &lt;- profile$decomposition[[2]][[&quot;seasonal&quot;]]
-    plot_data$residual2 &lt;- profile$decomposition[[2]][[&quot;random&quot;]]
-    
-    ggplot(plot_data, aes(x = date)) +
-      geom_line(aes(y = original2, color = &quot;Original&quot;)) +
-      geom_line(aes(y = trend2, color = &quot;Trend&quot;)) +
-      geom_line(aes(y = seasonal2, color = &quot;Seasonal&quot;)) +
-      geom_line(aes(y = residual2, color = &quot;Residual&quot;)) +
-      labs(x = &quot;Date&quot;, y = &quot;Value&quot;, color = &quot;Component&quot;) +
-      scale_color_manual(values = c(&quot;Original&quot; = &quot;black&quot;, &quot;Trend&quot; = &quot;blue&quot;,
-                                    &quot;Seasonal&quot; = &quot;red&quot;, &quot;Residual&quot; = &quot;green&quot;)) +
-      facet_wrap(~ &quot;Time Series 2: Weekly EIR&quot;, ncol = 1) +
-      theme_minimal()
-  })
-  
-  output$plot3 &lt;- renderPlot({
-    profile &lt;- ts_profiles[[as.numeric(input$profile)]]
-    plot_data &lt;- data.frame(
-      date = time(profile$ts[[3]]),
-      stringsAsFactors = FALSE
-    )
-    plot_data$original3 &lt;- profile$ts[[3]]
-    plot_data$trend3 &lt;- profile$decomposition[[3]][[&quot;trend&quot;]]
-    plot_data$seasonal3 &lt;- profile$decomposition[[3]][[&quot;seasonal&quot;]]
-    plot_data$residual3 &lt;- profile$decomposition[[3]][[&quot;random&quot;]]
-    
-    ggplot(plot_data, aes(x = date)) +
-      geom_line(aes(y = original3, color = &quot;Original&quot;)) +
-      geom_line(aes(y = trend3, color = &quot;Trend&quot;)) +
-      geom_line(aes(y = seasonal3, color = &quot;Seasonal&quot;)) +
-      geom_line(aes(y = residual3, color = &quot;Residual&quot;)) +
-      labs(x = &quot;Date&quot;, y = &quot;Value&quot;, color = &quot;Component&quot;) +
-      scale_color_manual(values = c(&quot;Original&quot; = &quot;black&quot;, &quot;Trend&quot; = &quot;blue&quot;,
-                                    &quot;Seasonal&quot; = &quot;red&quot;, &quot;Residual&quot; = &quot;green&quot;)) +
-      facet_wrap(~ &quot;Time Series 3: Monthly EIR&quot;, ncol = 1) +
-      theme_minimal()
-  })
-  
-  output$plot4 &lt;- renderPlot({
-    profile &lt;- ts_profiles[[as.numeric(input$profile)]]
-    plot_data &lt;- data.frame(
-      date = time(profile$ts[[4]]),
-      stringsAsFactors = FALSE
-    )
-    plot_data$original4 &lt;- profile$ts[[4]]
-    plot_data$trend4 &lt;- profile$decomposition[[4]][[&quot;trend&quot;]]
-    plot_data$seasonal4 &lt;- profile$decomposition[[4]][[&quot;seasonal&quot;]]
-    plot_data$residual4 &lt;- profile$decomposition[[4]][[&quot;random&quot;]]
-    
-    ggplot(plot_data, aes(x = date)) +
-      geom_line(aes(y = original4, color = &quot;Original&quot;)) +
-      geom_line(aes(y = trend4, color = &quot;Trend&quot;)) +
-      geom_line(aes(y = seasonal4, color = &quot;Seasonal&quot;)) +
-      geom_line(aes(y = residual4, color = &quot;Residual&quot;)) +
-      labs(x = &quot;Date&quot;, y = &quot;Value&quot;, color = &quot;Component&quot;) +
-      scale_color_manual(values = c(&quot;Original&quot; = &quot;black&quot;, &quot;Trend&quot; = &quot;blue&quot;,
-                                    &quot;Seasonal&quot; = &quot;red&quot;, &quot;Residual&quot; = &quot;green&quot;)) +
-      facet_wrap(~ &quot;Time Series 4: Days Since Achievement Earned&quot;, ncol = 1) +
-      theme_minimal()
-  })
-}
-
-# Run the Shiny app
-shinyApp(ui = ui, server = server)</code></pre>
+<p><strong>Note:</strong> This Shiny app won’t display in the
+self-contained HTML file. To interact with the app, you can run the RMD
+document in an R Markdown viewer or in the RStudio IDE.</p>
+<pre class="r"><code>generate_ts_shiny_plots(ts_profiles)</code></pre>
+<pre><code>## PhantomJS not found. You can install it with webshot::install_phantomjs(). If it is installed, please make sure the phantomjs executable can be found via the PATH variable.</code></pre>
+<div style="width: 100% ; height: 400px ; text-align: center; box-sizing: border-box; -moz-box-sizing: border-box; -webkit-box-sizing: border-box;" class="muted well">Shiny applications not supported in static R Markdown documents</div>
 </div>
 </div>
 <div id="model-preparation" class="section level1">
 <h1>Model Preparation</h1>
-<p>We prepare our models for evaluation by first creating lists
-containing the indices for the training and testing sets for each of the
-target variables. For each of the target variables, lagged version are
-coded in at one day, one week, two weeks and four weeks.</p>
-<pre class="r"><code>ts_profiles &lt;- ts_profiles %&gt;% keep(~ !is.null(.))
-
-# Initialize empty lists for data and dtrain
-t1_data_list &lt;- list()
-t1_dtrain_list &lt;- list()
-
-t2_data_list = list()
-t2_dtrain_list = list()
-
-t3_data_list = list()
-t3_dtrain_list = list()
-
-t4_data_list = list()
-t4_dtrain_list = list()
-
-t5_data_list = list()
-t5_dtrain_list = list()
-
-for (i in 1:length(ts_profiles)) {
-  for (j in 1:5) {  # Loop over target variables (j = 1 for ts[[1]], j = 2 for ts[[2]])
-    # Extract the target variable (daily_lt_eir) and create lagged variables as features
-    target &lt;- as.vector(ts_profiles[[i]][[&quot;ts&quot;]][[j]])
-    # Add a small constant to handle zero values and apply log transformation
-    #target_transformed &lt;- log(target + 1e-6)
-    lag_1day = lag(target, 1)
-    lag_1week = lag(target, 7)
-    lag_2week = lag(target, 14)
-    lag_1month = lag(target, 28)
-    year = ts_profiles[[i]][[&quot;profile&quot;]][[&quot;year&quot;]]
-    month.x = ts_profiles[[i]][[&quot;profile&quot;]][[&quot;month.x&quot;]]
-    day_of_year = ts_profiles[[i]][[&quot;profile&quot;]][[&quot;day_of_year&quot;]]
-    week = ts_profiles[[i]][[&quot;profile&quot;]][[&quot;week&quot;]]
-    
-    # Combine the features and target into a data frame
-    data &lt;- data.frame(target, year, month.x, day_of_year, week, lag_1day, lag_1week, lag_2week, lag_1month)
-    data &lt;- na.omit(data)  # Remove rows with missing values
-    
-    # Convert the data to DMatrix format
-    dtrain &lt;- xgb.DMatrix(data = as.matrix(data[, -1]), label = data[, 1])
-    
-    # Add the data and dtrain to their respective lists
-    if (j == 1) {
-      t1_data_list[[i]] &lt;- data
-      t1_dtrain_list[[i]] &lt;- dtrain
-    } else if (j == 2) {
-      t2_data_list[[i]] &lt;- data
-      t2_dtrain_list[[i]] &lt;- dtrain
-    } else if (j == 3) {
-      t3_data_list[[i]] &lt;- data
-      t3_dtrain_list[[i]] &lt;- dtrain
-    } else if (j == 4) {
-      t4_data_list[[i]] &lt;- data
-      t4_dtrain_list[[i]] &lt;- dtrain
-    } else if (j == 5) {
-      t5_data_list[[i]] &lt;- data
-      t5_dtrain_list[[i]] &lt;- dtrain
-    }
-  }
-}
-
-rm(data)
-rm(dtrain)</code></pre>
-<ul>
-<li>Hyperparameters include Cross Folds and Nrounds.</li>
-<li>Cross Folds tested at 5, 10, and 25.</li>
-<li>Nrounds tested at 100 and 1000</li>
-</ul>
-<pre class="r"><code>t1_5fold_full = get_cv_folds(t1_data_list, 5)
-t1_10fold_full = get_cv_folds(t1_data_list, 10)
-t1_25fold_full = get_cv_folds(t1_data_list, 25)
+<p>We prepare our models for evaluation by first removing any NULL data
+before analysis. Lists containing the indices for the training and
+testing sets for each of the target variables are made. For each of the
+target variables, lagged version are coded in at one day, 7 days, 14
+days and 28 days. Observations with missing values are omitted so the
+first date of data analyzed is 28 days after the first achievement is
+earned.</p>
+<pre class="r"><code>ts_profiles = ts_profiles %&gt;% keep(~ !is.null(.))</code></pre>
+<pre class="r"><code>daily_ltEIR_data = prepare_models(ts_profiles, &quot;daily_lt_eir&quot;)</code></pre>
+<pre class="r"><code>days_since_achievement_data = prepare_models(ts_profiles, &quot;days_since_achievement&quot;)</code></pre>
+<p>The first hyperparameter we are analyzing is the Time Series
+cross-validated folds created to evaluate model performance at 5, 10, 25
+folds. These folds represent a fraction of the parameter passed tested
+on the next available fraction of the data available. For instance the
+CV folds at 5 will test the first 1/5th against the second 1/5th, the
+first 2/5ths against the 3/5th and so on until the last 1/5th is
+validated against the previous data up to that point.</p>
+<pre class="r"><code>daily_ltEIR_5fold_full = get_cv_folds(daily_ltEIR_data$data_list, 5)
+daily_ltEIR_10fold_full = get_cv_folds(daily_ltEIR_data$data_list, 10)
+daily_ltEIR_25fold_full = get_cv_folds(daily_ltEIR_data$data_list, 25)
 
 # Assuming you have an xgb.DMatrix called &quot;dtrain&quot;
-t1_params &lt;- list(
+daily_ltEIR_params &lt;- list(
   objective = &quot;reg:squarederror&quot;,
   eval_metric = &quot;rmse&quot;,
   max_depth = 8,
@@ -1838,14 +1677,28 @@ t1_params &lt;- list(
   subsample = 0.8,
   colsample_bytree = 0.8
 )</code></pre>
-<pre class="r"><code># 100 BOOST ROUNDS
-t1_5fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
-t1_10fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))
-t1_25fold_100n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 100))</code></pre>
-<pre class="r"><code># 1000 BOOST ROUNDS
-#t1_5fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_5fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
-#t1_10fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_10fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))
-#t1_25fold_1000n_models = lapply(1:189, function(index) train_cv_target1_models(index, t1_25fold_full, t1_params, t1_data_list, t1_dtrain_list, 1000))</code></pre>
+<p>The second hyperparameter we observe is the number of boosting rounds
+in the XGBoost algorithm tested at 100 and 1000. An individual model is
+created using both 100 and 1000 boost rounds with 5, 10 and 25 folds
+cross folds for the target 1 variable.</p>
+</div>
+<div id="model-training" class="section level1">
+<h1>Model Training</h1>
+<div id="training-100-rounds" class="section level2">
+<h2>Training (100 Rounds)</h2>
+<pre class="r"><code>daily_ltEIR_5fold_100n_models = lapply(1:length(daily_ltEIR_data$data_list), function(index) train_cv_target1_models(index, daily_ltEIR_5fold_full, daily_ltEIR_params, daily_ltEIR_data$data_list, daily_ltEIR_data$dtrain_list, 100))</code></pre>
+<pre class="r"><code>daily_ltEIR_10fold_100n_models = lapply(1:length(daily_ltEIR_data$data_list), function(index) train_cv_target1_models(index, daily_ltEIR_10fold_full, daily_ltEIR_params, daily_ltEIR_data$data_list, daily_ltEIR_data$dtrain_list, 100))</code></pre>
+<pre class="r"><code>daily_ltEIR_25fold_100n_models = lapply(1:length(daily_ltEIR_data$data_list), function(index) train_cv_target1_models(index, daily_ltEIR_25fold_full, daily_ltEIR_params, daily_ltEIR_data$data_list, daily_ltEIR_data$dtrain_list, 100))</code></pre>
+</div>
+<div id="performance-metrics-100-rounds" class="section level2">
+<h2>Performance Metrics (100 Rounds)</h2>
+<p>This interactive plot compares some performance metrics across the
+different number of folds at 100 rounds. These models were trained to
+predict daily lifetime EIR for each of the different profiles. The user
+selects which profile the model was trained on and compares performance
+metrics RMSE, MAPE, and SMAPE across the folds. For most profiles, the
+metrics trend downward (less error) with increasing folds and further in
+the folds.</p>
 <pre class="r"><code># UI
 ui &lt;- fluidPage(
   titlePanel(&quot;Evaluation Metrics&quot;),
@@ -1854,9 +1707,9 @@ ui &lt;- fluidPage(
       selectInput(&quot;profile&quot;, &quot;Select Profile:&quot;, choices = c(1:189))
     ),
     mainPanel(
-      plotOutput(&quot;t1_5fold_100n_metrics_plot&quot;),
-      plotOutput(&quot;t1_10fold_100n_metrics_plot&quot;),
-      plotOutput(&quot;t1_25fold_100n_metrics_plot&quot;),
+      plotOutput(&quot;daily_ltEIR_5fold_100n_metrics_plot&quot;),
+      plotOutput(&quot;daily_ltEIR_10fold_100n_metrics_plot&quot;),
+      plotOutput(&quot;daily_ltEIR_25fold_100n_metrics_plot&quot;),
       tableOutput(&quot;mean_metrics&quot;)
     )
   )
@@ -1864,17 +1717,17 @@ ui &lt;- fluidPage(
 
 # Server
 server &lt;- function(input, output, session) {
-  output$t1_5fold_100n_metrics_plot &lt;- renderPlot({
+  output$daily_ltEIR_5fold_100n_metrics_plot &lt;- renderPlot({
     profile &lt;- as.integer(input$profile)
     # Create a data frame with the evaluation metrics for the selected profile
-    t1_5fold_100n_metrics_df &lt;- data.frame(
-      Fold = 1:length(t1_5fold_100n_models[[profile]][[3]][[1]]),
-      RMSE = t1_5fold_100n_models[[profile]][[3]][[1]],
-      MAPE = t1_5fold_100n_models[[profile]][[3]][[2]],
-      SMAPE = t1_5fold_100n_models[[profile]][[3]][[3]]
+    daily_ltEIR_5fold_100n_metrics_df &lt;- data.frame(
+      Fold = 1:length(daily_ltEIR_5fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = daily_ltEIR_5fold_100n_models[[profile]][[3]][[1]],
+      MAPE = daily_ltEIR_5fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = daily_ltEIR_5fold_100n_models[[profile]][[3]][[3]]
     )
     # Plot the evaluation metrics
-    ggplot(t1_5fold_100n_metrics_df, aes(x = Fold)) +
+    ggplot(daily_ltEIR_5fold_100n_metrics_df, aes(x = Fold)) +
       geom_line(aes(y = RMSE, color = &quot;RMSE&quot;), size = 1) +
       geom_line(aes(y = MAPE, color = &quot;MAPE&quot;), size = 1) +
       geom_line(aes(y = SMAPE, color = &quot;SMAPE&quot;), size = 1) +
@@ -1885,17 +1738,17 @@ server &lt;- function(input, output, session) {
       scale_color_manual(values = c(&quot;RMSE&quot; = &quot;red&quot;, &quot;MAPE&quot; = &quot;blue&quot;, &quot;SMAPE&quot; = &quot;green&quot;)) +
       theme_minimal()
   })
-  output$t1_10fold_100n_metrics_plot &lt;- renderPlot({
+  output$daily_ltEIR_10fold_100n_metrics_plot &lt;- renderPlot({
     profile &lt;- as.integer(input$profile)
     # Create a data frame with the evaluation metrics for the selected profile
-    t1_10fold_100n_metrics_df &lt;- data.frame(
-      Fold = 1:length(t1_10fold_100n_models[[profile]][[3]][[1]]),
-      RMSE = t1_10fold_100n_models[[profile]][[3]][[1]],
-      MAPE = t1_10fold_100n_models[[profile]][[3]][[2]],
-      SMAPE = t1_10fold_100n_models[[profile]][[3]][[3]]
+    daily_ltEIR_10fold_100n_metrics_df &lt;- data.frame(
+      Fold = 1:length(daily_ltEIR_10fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = daily_ltEIR_10fold_100n_models[[profile]][[3]][[1]],
+      MAPE = daily_ltEIR_10fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = daily_ltEIR_10fold_100n_models[[profile]][[3]][[3]]
     )
     # Plot the evaluation metrics
-    ggplot(t1_10fold_100n_metrics_df, aes(x = Fold)) +
+    ggplot(daily_ltEIR_10fold_100n_metrics_df, aes(x = Fold)) +
       geom_line(aes(y = RMSE, color = &quot;RMSE&quot;), size = 1) +
       geom_line(aes(y = MAPE, color = &quot;MAPE&quot;), size = 1) +
       geom_line(aes(y = SMAPE, color = &quot;SMAPE&quot;), size = 1) +
@@ -1906,17 +1759,17 @@ server &lt;- function(input, output, session) {
       scale_color_manual(values = c(&quot;RMSE&quot; = &quot;red&quot;, &quot;MAPE&quot; = &quot;blue&quot;, &quot;SMAPE&quot; = &quot;green&quot;)) +
       theme_minimal()
   })
-  output$t1_25fold_100n_metrics_plot &lt;- renderPlot({
+  output$daily_ltEIR_25fold_100n_metrics_plot &lt;- renderPlot({
     profile &lt;- as.integer(input$profile)
     # Create a data frame with the evaluation metrics for the selected profile
-    t1_25fold_100n_metrics_df &lt;- data.frame(
-      Fold = 1:length(t1_25fold_100n_models[[profile]][[3]][[1]]),
-      RMSE = t1_25fold_100n_models[[profile]][[3]][[1]],
-      MAPE = t1_25fold_100n_models[[profile]][[3]][[2]],
-      SMAPE = t1_25fold_100n_models[[profile]][[3]][[3]]
+    daily_ltEIR_25fold_100n_metrics_df &lt;- data.frame(
+      Fold = 1:length(daily_ltEIR_25fold_100n_models[[profile]][[3]][[1]]),
+      RMSE = daily_ltEIR_25fold_100n_models[[profile]][[3]][[1]],
+      MAPE = daily_ltEIR_25fold_100n_models[[profile]][[3]][[2]],
+      SMAPE = daily_ltEIR_25fold_100n_models[[profile]][[3]][[3]]
     )
     # Plot the evaluation metrics
-    ggplot(t1_25fold_100n_metrics_df, aes(x = Fold)) +
+    ggplot(daily_ltEIR_25fold_100n_metrics_df, aes(x = Fold)) +
       geom_line(aes(y = RMSE, color = &quot;RMSE&quot;), size = 1) +
       geom_line(aes(y = MAPE, color = &quot;MAPE&quot;), size = 1) +
       geom_line(aes(y = SMAPE, color = &quot;SMAPE&quot;), size = 1) +
@@ -1934,15 +1787,15 @@ server &lt;- function(input, output, session) {
   mean_metrics_df &lt;- data.frame(
     Metric = rep(c(&quot;Mean RMSE&quot;, &quot;Mean MAPE&quot;, &quot;Mean SMAPE&quot;), times = 3),
     Value = c(
-      t1_5fold_100n_models[[profile]][[4]],
-      t1_5fold_100n_models[[profile]][[5]],
-      t1_5fold_100n_models[[profile]][[6]],
-      t1_10fold_100n_models[[profile]][[4]],
-      t1_10fold_100n_models[[profile]][[5]],
-      t1_10fold_100n_models[[profile]][[6]],
-      t1_25fold_100n_models[[profile]][[4]],
-      t1_25fold_100n_models[[profile]][[5]],
-      t1_25fold_100n_models[[profile]][[6]]
+      daily_ltEIR_5fold_100n_models[[profile]][[4]],
+      daily_ltEIR_5fold_100n_models[[profile]][[5]],
+      daily_ltEIR_5fold_100n_models[[profile]][[6]],
+      daily_ltEIR_10fold_100n_models[[profile]][[4]],
+      daily_ltEIR_10fold_100n_models[[profile]][[5]],
+      daily_ltEIR_10fold_100n_models[[profile]][[6]],
+      daily_ltEIR_25fold_100n_models[[profile]][[4]],
+      daily_ltEIR_25fold_100n_models[[profile]][[5]],
+      daily_ltEIR_25fold_100n_models[[profile]][[6]]
     ),
     Fold = rep(c(&quot;5-fold&quot;, &quot;10-fold&quot;, &quot;25-fold&quot;), each = 3)
   )
@@ -1954,6 +1807,22 @@ server &lt;- function(input, output, session) {
 
 # Run the Shiny app
 shinyApp(ui = ui, server = server)</code></pre>
+</div>
+<div id="training-1000-rounds" class="section level2">
+<h2>Training (1000 Rounds)</h2>
+<pre class="r"><code>daily_ltEIR_5fold_1000n_models = lapply(1:length(daily_ltEIR_data$data_list), function(index) train_cv_target1_models(index, daily_ltEIR_5fold_full, daily_ltEIR_params, daily_ltEIRdata$data_list, daily_ltEIRdata$dtrain_list, 1000))</code></pre>
+<pre class="r"><code>daily_ltEIR_10fold_1000n_models = lapply(1:length(daily_ltEIR_data$data_list), function(index) train_cv_target1_models(index, daily_ltEIR_10fold_full, daily_ltEIR_params, daily_ltEIR_data$data_list, daily_ltEIRdata$dtrain_list, 1000))</code></pre>
+<pre class="r"><code>daily_ltEIR_25fold_1000n_models = lapply(1:length(daily_ltEIR_data$data_list), function(index) train_cv_target1_models(index, daily_ltEIR_25fold_full, daily_ltEIR_params, daily_ltEIRdata$data_list, daily_ltEIRdata$dtrain_list, 1000))</code></pre>
+</div>
+<div id="performance-metrics-1000-rounds" class="section level2">
+<h2>Performance Metrics (1000 Rounds)</h2>
+<p>This interactive plot compares some performance metrics across the
+different number of folds at 1000 rounds. These models were trained to
+predict daily lifetime EIR for each of the different profiles. The user
+selects which profile the model was trained on and compares performance
+metrics RMSE, MAPE, and SMAPE across the folds. For most profiles, the
+metrics trend downward (less error) with increasing folds and further in
+the folds.</p>
 <pre class="r"><code># UI
 ui &lt;- fluidPage(
   titlePanel(&quot;Evaluation Metrics&quot;),
@@ -2061,6 +1930,7 @@ server &lt;- function(input, output, session) {
 
 # Run the Shiny app
 shinyApp(ui = ui, server = server)</code></pre>
+</div>
 </div>
 
 
